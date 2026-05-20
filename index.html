@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Fortnite Gun Game</title>
+    <title>3D Fortnite Gun Game (Keyboard Only)</title>
     <style>
         * {
             box-sizing: border-box;
@@ -84,17 +84,18 @@
             font-weight: bold;
         }
 
-        #crosshair {
+        #controls-card {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 10px;
-            height: 10px;
-            border: 2px solid #00ffff;
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 5px solid #fbf034;
             z-index: 10;
+            font-family: Arial, sans-serif;
+            color: #fff;
+            line-height: 1.5;
         }
 
         .screen {
@@ -145,7 +146,12 @@
 </head>
 <body>
 
-    <div id="crosshair"></div>
+    <div id="controls-card" class="hud">
+        <b style="color: #fbf034; font-size: 1.1rem;">KEYBOARD CONTROLS:</b><br>
+        • Walk: <span style="color:#00ffff">W, A, S, D</span><br>
+        • Turn Camera / Aim: <span style="color:#00ffff">Left & Right Arrows</span><br>
+        • Shoot Gun: <span style="color:#00ffff">Spacebar</span>
+    </div>
 
     <div id="top-hud" class="hud">
         <div class="hud-card" style="border-right-color: #ffaa00;" id="weapon-display">WEAPON: Tier 1 (Pistol)</div>
@@ -165,8 +171,8 @@
     </div>
 
     <div id="start-screen" class="screen">
-        <h1>3D GUN GAME ROYALE</h1>
-        <p>Drop into a fully 3D Battle Arena! Use WASD to move your character. Use your mouse to aim your weapon and left-click to fire. Eliminate 3D player models to rank up your guns and outrun the storm circle!</p>
+        <h1>3D KEYBOARD ROYALE</h1>
+        <p>No mouse required! Use WASD to walk around the 3D map. Rotate your camera using the Left and Right Arrow keys. Press Spacebar to fire your weapon at moving targets!</p>
         <button onclick="init3DGame()">Jump From Battle Bus</button>
     </div>
 
@@ -180,42 +186,49 @@
         let scene, camera, renderer;
         let player, playerBody, weaponMesh;
         let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        let turnLeft = false, turnRight = false;
         let gameRunning = false;
-        let mouseX = 0, playerRotation = 0;
+        let playerRotation = 0;
         
         let enemies3D = [];
         let bullets3D = [];
         let weaponTier = 0;
         let stormSize3D = 180;
         let matchTimer = 60;
+        let lastFired = 0;
 
         const weaponConfig = [
-            { name: "Tier 1: Pistol", color: 0xcccccc, size: 0.2, speed: 2.2 },
-            { name: "Tier 2: Tactical Shotgun", color: 0x00bcff, size: 0.3, speed: 2.8 },
-            { name: "Tier 3: Heavy Scar AR", color: 0xc5a1ff, size: 0.4, speed: 3.5 },
-            { name: "Tier 4: Mythic Railgun", color: 0xff0055, size: 0.5, speed: 5.0 }
+            { name: "Tier 1: Pistol", color: 0xcccccc, speed: 2.2, delay: 400 },
+            { name: "Tier 2: Tactical Shotgun", color: 0x00bcff, speed: 2.8, delay: 500 },
+            { name: "Tier 3: Heavy Scar AR", color: 0xc5a1ff, speed: 3.5, delay: 250 },
+            { name: "Tier 4: Mythic Railgun", color: 0xff0055, speed: 5.0, delay: 100 }
         ];
 
-        window.addEventListener('keydown', e => handleKeys(e.code, true));
-        window.addEventListener('keyup', e => handleKeys(e.code, false));
-        window.addEventListener('mousemove', e => {
-            if (!gameRunning) return;
-            playerRotation -= e.movementX * 0.003;
-        });
-        window.addEventListener('mousedown', () => {
-            if (gameRunning) fire3DWeapon();
-        });
+        window.addEventListener('keydown', e => handleKeys(e.key, true));
+        window.addEventListener('keyup', e => handleKeys(e.key, false));
 
-        function handleKeys(code, isDown) {
-            if (code === 'KeyW' || code === 'ArrowUp') moveForward = isDown;
-            if (code === 'KeyS' || code === 'ArrowDown') moveBackward = isDown;
-            if (code === 'KeyA' || code === 'ArrowLeft') moveLeft = isDown;
-            if (code === 'KeyD' || code === 'ArrowRight') moveRight = isDown;
+        function handleKeys(key, isDown) {
+            let k = key.toLowerCase();
+            if (k === 'w') moveForward = isDown;
+            if (k === 's') moveBackward = isDown;
+            if (k === 'a') moveLeft = isDown;
+            if (k === 'd') moveRight = isDown;
+            
+            if (key === 'ArrowLeft') turnLeft = isDown;
+            if (key === 'ArrowRight') turnRight = isDown;
+
+            // Block default browser spacing drops
+            if (key === ' ' || key === 'ArrowLeft' || key === 'ArrowRight' || key === 'ArrowUp' || key === 'ArrowDown') {
+                if(gameRunning) event.preventDefault();
+            }
+
+            if (key === ' ' && isDown && gameRunning) {
+                fire3DWeapon();
+            }
         }
 
         function init3DGame() {
             document.getElementById('start-screen').style.display = 'none';
-            document.body.requestPointerLock();
 
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x0c0f1d);
@@ -223,10 +236,17 @@
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-            const floorGeo = new THREE.PlaneGeometry(300, 300);
-            const floorMat = new THREE.MeshLambertMaterial({ color: 0x1e2538, side: THREE.DoubleSide });
+            // Add a checkerboard pattern grid map floor so you can see movement depth
+            const floorGeo = new THREE.PlaneGeometry(300, 300, 30, 30);
+            const floorMat = new THREE.MeshLambertMaterial({ color: 0x242c3e, wireframe: false });
+            
+            // Draw visible grid lines on the 3D floor plane floor layout map area
+            const gridHelper = new THREE.GridHelper(300, 60, 0x00ffff, 0x444466);
+            gridHelper.position.y = 0.01;
+            scene.add(gridHelper);
+
             const floor = new THREE.Mesh(floorGeo, floorMat);
-            floor.rotation.x = Math.PI / 2;
+            floor.rotation.x = -Math.PI / 2;
             scene.add(floor);
 
             player = new THREE.Group();
@@ -246,10 +266,10 @@
             player.position.set(0, 0, 0);
             scene.add(player);
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
             scene.add(ambientLight);
             const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(10, 20, 10);
+            directionalLight.position.set(20, 40, 20);
             scene.add(directionalLight);
 
             for(let i=0; i<5; i++) {
@@ -273,15 +293,22 @@
             eBody.position.y = 1;
             enemyGroup.add(eBody);
 
+            // Add a little floating cube top head layout so they look like actual character rigs
+            const headGeo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
+            const headMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+            const head = new THREE.Mesh(headGeo, headMat);
+            head.position.y = 2.2;
+            enemyGroup.add(head);
+
             enemyGroup.position.set(
-                (Math.random() - 0.5) * 80,
+                (Math.random() - 0.5) * 100,
                 0,
-                (Math.random() - 0.5) * 80
+                (Math.random() - 0.5) * 100
             );
 
             enemyGroup.userData = {
-                dx: (Math.random() - 0.5) * 0.15,
-                dz: (Math.random() - 0.5) * 0.15
+                dx: (Math.random() - 0.5) * 0.2,
+                dz: (Math.random() - 0.5) * 0.2
             };
 
             scene.add(enemyGroup);
@@ -289,8 +316,12 @@
         }
 
         function fire3DWeapon() {
+            let now = Date.now();
             const currentGun = weaponConfig[weaponTier];
-            const bGeo = new THREE.SphereGeometry(0.15, 8, 8);
+            if (now - lastFired < currentGun.delay) return;
+            lastFired = now;
+
+            const bGeo = new THREE.SphereGeometry(0.25, 8, 8);
             const bMat = new THREE.MeshBasicMaterial({ color: currentGun.color });
             const bulletMesh = new THREE.Mesh(bGeo, bMat);
 
@@ -299,7 +330,7 @@
             bulletMesh.userData = {
                 vx: -Math.sin(playerRotation) * currentGun.speed,
                 vz: -Math.cos(playerRotation) * currentGun.speed,
-                life: 100
+                life: 120
             };
 
             scene.add(bulletMesh);
@@ -309,30 +340,37 @@
         function renderEngineLoop() {
             if (!gameRunning) return;
 
+            // Handle Camera Turning via Arrow Keys
+            if (turnLeft) playerRotation += 0.04;
+            if (turnRight) playerRotation -= 0.04;
+
             player.rotation.y = playerRotation;
 
+            // Handle Character Movement
             if (moveForward) {
-                player.position.x -= Math.sin(playerRotation) * 0.2;
-                player.position.z -= Math.cos(playerRotation) * 0.2;
+                player.position.x -= Math.sin(playerRotation) * 0.25;
+                player.position.z -= Math.cos(playerRotation) * 0.25;
             }
             if (moveBackward) {
-                player.position.x += Math.sin(playerRotation) * 0.2;
-                player.position.z += Math.cos(playerRotation) * 0.2;
+                player.position.x += Math.sin(playerRotation) * 0.25;
+                player.position.z += Math.cos(playerRotation) * 0.25;
             }
             if (moveLeft) {
-                player.position.x -= Math.cos(playerRotation) * 0.2;
-                player.position.z += Math.sin(playerRotation) * 0.2;
+                player.position.x -= Math.cos(playerRotation) * 0.25;
+                player.position.z += Math.sin(playerRotation) * 0.25;
             }
             if (moveRight) {
-                player.position.x += Math.cos(playerRotation) * 0.2;
-                player.position.z -= Math.sin(playerRotation) * 0.2;
+                player.position.x += Math.cos(playerRotation) * 0.25;
+                player.position.z -= Math.sin(playerRotation) * 0.25;
             }
 
-            camera.position.x = player.position.x + Math.sin(playerRotation) * 6;
-            camera.position.z = player.position.z + Math.cos(playerRotation) * 6;
-            camera.position.y = player.position.y + 3.5;
-            camera.lookAt(player.position.x, player.position.y + 1, player.position.z);
+            // Keep Third-Person Camera strictly anchored behind the player body frame asset
+            camera.position.x = player.position.x + Math.sin(playerRotation) * 7;
+            camera.position.z = player.position.z + Math.cos(playerRotation) * 7;
+            camera.position.y = player.position.y + 4;
+            camera.lookAt(player.position.x, player.position.y + 1.2, player.position.z);
 
+            // Bullet Engine Update Cycles
             for (let i = bullets3D.length - 1; i >= 0; i--) {
                 let b = bullets3D[i];
                 b.position.x += b.userData.vx;
@@ -349,7 +387,7 @@
                     let enemy = enemies3D[j];
                     let distance = b.position.distanceTo(enemy.position);
 
-                    if (distance < 1.5) {
+                    if (distance < 1.6) {
                         scene.remove(enemy);
                         enemies3D.splice(j, 1);
                         scene.remove(b);
@@ -358,7 +396,7 @@
                         if (weaponTier < weaponConfig.length - 1) {
                             weaponTier++;
                             document.getElementById('weapon-display').innerText = `WEAPON: ${weaponConfig[weaponTier].name}`;
-                            weaponMesh.scale.set(1, 1, 1 + weaponTier * 0.4);
+                            weaponMesh.scale.set(1, 1, 1 + weaponTier * 0.5);
                         } else {
                             end3DMatch(true);
                             return;
@@ -370,6 +408,7 @@
                 }
             }
 
+            // Enemy Path Updates
             enemies3D.forEach(enemy => {
                 enemy.position.x += enemy.userData.dx;
                 enemy.position.z += enemy.userData.dz;
@@ -407,8 +446,6 @@
 
         function end3DMatch(victory) {
             gameRunning = false;
-            document.exitPointerLock();
-            
             let panel = document.getElementById('game-over-screen');
             let banner = document.getElementById('end-title');
             let info = document.getElementById('end-msg');
@@ -416,11 +453,11 @@
             if (victory) {
                 banner.innerText = "🏆 VICTORY ROYALE";
                 banner.style.color = "#fbf034";
-                info.innerText = "Incredible! You navigated the 3D battle map and successfully dominated every weapon tier progression!";
+                info.innerText = "Incredible! You navigated the 3D map and leveled up every weapon tier using keyboard controls!";
             } else {
                 banner.innerText = "ELIMINATED BY STORM";
                 banner.style.color = "#ff0055";
-                info.innerText = "You ran out of match duration or became completely trapped outside the safety circle wall.";
+                info.innerText = "You ran out of match time or got lost outside the safe zone circle perimeter.";
             }
             panel.style.display = 'flex';
         }
