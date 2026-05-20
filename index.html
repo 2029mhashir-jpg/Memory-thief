@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Fortnite Gun Game</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background-color: #000;
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Impact', sans-serif;
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .hud {
+            position: absolute;
+            z-index: 10;
+            text-transform: uppercase;
+            font-style: italic;
+            text-shadow: 2px 2px 0px #000;
+            color: #fff;
+        }
+
+        #top-hud {
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .hud-card {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 20px;
+            border-radius: 4px;
+            border-right: 6px solid #fbf034;
+            font-size: 1.4rem;
+            letter-spacing: 1px;
+        }
+
+        #bottom-bars {
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+        }
+
+        .bar-container {
+            width: 220px;
+            height: 30px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #fff;
+            border-radius: 5px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bar-fill {
+            height: 100%;
+            width: 100%;
+        }
+
+        .bar-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            top: 4px;
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 10px;
+            height: 10px;
+            border: 2px solid #00ffff;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(15, 17, 26, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 4.5rem;
+            color: #fbf034;
+            text-shadow: 3px 3px 0px #000, 0 0 30px rgba(251,240,52,0.5);
+            margin-bottom: 20px;
+        }
+
+        p {
+            font-family: 'Arial', sans-serif;
+            color: #cbd5e1;
+            font-size: 1.3rem;
+            max-width: 600px;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        button {
+            font-family: 'Impact', sans-serif;
+            background: #ff0055;
+            color: #fff;
+            border: none;
+            padding: 15px 50px;
+            font-size: 2rem;
+            border-radius: 6px;
+            cursor: pointer;
+            text-shadow: 2px 2px 0 #000;
+            box-shadow: 0 5px 0 #990033;
+        }
+    </style>
+    <script src="https://cloudflare.com"></script>
+</head>
+<body>
+
+    <div id="crosshair"></div>
+
+    <div id="top-hud" class="hud">
+        <div class="hud-card" style="border-right-color: #ffaa00;" id="weapon-display">WEAPON: Tier 1 (Pistol)</div>
+        <div class="hud-card" style="border-right-color: #ff00ff;">Storm Collapse: <span id="timer">60</span>s</div>
+        <div class="hud-card" style="border-right-color: #00f0ff;">Opponents Left: <span id="alive-count">5</span></div>
+    </div>
+
+    <div id="bottom-bars" class="hud">
+        <div class="bar-container">
+            <div id="shield-bar" class="bar-fill" style="background: #00bcff; width: 100%;"></div>
+            <div class="bar-text">SHIELD: <span id="shield-txt">100</span></div>
+        </div>
+        <div class="bar-container">
+            <div id="health-bar" class="bar-fill" style="background: #00ff55; width: 100%;"></div>
+            <div class="bar-text">HEALTH: <span id="health-txt">100</span></div>
+        </div>
+    </div>
+
+    <div id="start-screen" class="screen">
+        <h1>3D GUN GAME ROYALE</h1>
+        <p>Drop into a fully 3D Battle Arena! Use WASD to move your character. Use your mouse to aim your weapon and left-click to fire. Eliminate 3D player models to rank up your guns and outrun the storm circle!</p>
+        <button onclick="init3DGame()">Jump From Battle Bus</button>
+    </div>
+
+    <div id="game-over-screen" class="screen" style="display: none;">
+        <h1 id="end-title">VICTORY ROYALE</h1>
+        <p id="end-msg">You conquered the 3D loop and leveled up every single weapon class!</p>
+        <button onclick="location.reload()">Return to Lobby</button>
+    </div>
+
+    <script>
+        let scene, camera, renderer;
+        let player, playerBody, weaponMesh;
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        let gameRunning = false;
+        let mouseX = 0, playerRotation = 0;
+        
+        let enemies3D = [];
+        let bullets3D = [];
+        let weaponTier = 0;
+        let stormSize3D = 180;
+        let matchTimer = 60;
+
+        const weaponConfig = [
+            { name: "Tier 1: Pistol", color: 0xcccccc, size: 0.2, speed: 2.2 },
+            { name: "Tier 2: Tactical Shotgun", color: 0x00bcff, size: 0.3, speed: 2.8 },
+            { name: "Tier 3: Heavy Scar AR", color: 0xc5a1ff, size: 0.4, speed: 3.5 },
+            { name: "Tier 4: Mythic Railgun", color: 0xff0055, size: 0.5, speed: 5.0 }
+        ];
+
+        window.addEventListener('keydown', e => handleKeys(e.code, true));
+        window.addEventListener('keyup', e => handleKeys(e.code, false));
+        window.addEventListener('mousemove', e => {
+            if (!gameRunning) return;
+            playerRotation -= e.movementX * 0.003;
+        });
+        window.addEventListener('mousedown', () => {
+            if (gameRunning) fire3DWeapon();
+        });
+
+        function handleKeys(code, isDown) {
+            if (code === 'KeyW' || code === 'ArrowUp') moveForward = isDown;
+            if (code === 'KeyS' || code === 'ArrowDown') moveBackward = isDown;
+            if (code === 'KeyA' || code === 'ArrowLeft') moveLeft = isDown;
+            if (code === 'KeyD' || code === 'ArrowRight') moveRight = isDown;
+        }
+
+        function init3DGame() {
+            document.getElementById('start-screen').style.display = 'none';
+            document.body.requestPointerLock();
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0c0f1d);
+            scene.fog = new THREE.FogExp2(0x0c0f1d, 0.015);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+            const floorGeo = new THREE.PlaneGeometry(300, 300);
+            const floorMat = new THREE.MeshLambertMaterial({ color: 0x1e2538, side: THREE.DoubleSide });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = Math.PI / 2;
+            scene.add(floor);
+
+            player = new THREE.Group();
+            
+            const bodyGeo = new THREE.CylinderGeometry(0.6, 0.6, 2, 16);
+            const bodyMat = new THREE.MeshLambertMaterial({ color: 0x00f0ff });
+            playerBody = new THREE.Mesh(bodyGeo, bodyMat);
+            playerBody.position.y = 1;
+            player.add(playerBody);
+
+            const gunGeo = new THREE.BoxGeometry(0.2, 0.2, 1.2);
+            const gunMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+            weaponMesh = new THREE.Mesh(gunGeo, gunMat);
+            weaponMesh.position.set(0.5, 1.2, -0.8);
+            player.add(weaponMesh);
+
+            player.position.set(0, 0, 0);
+            scene.add(player);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 10);
+            scene.add(directionalLight);
+
+            for(let i=0; i<5; i++) {
+                spawn3DEnemy();
+            }
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            gameRunning = true;
+            requestAnimationFrame(renderEngineLoop);
+            startStormCountdown();
+        }
+
+        function spawn3DEnemy() {
+            const enemyGroup = new THREE.Group();
+            const eBodyGeo = new THREE.CylinderGeometry(0.6, 0.6, 2, 16);
+            const eBodyMat = new THREE.MeshLambertMaterial({ color: 0xff0055 });
+            const eBody = new THREE.Mesh(eBodyGeo, eBodyMat);
+            eBody.position.y = 1;
+            enemyGroup.add(eBody);
+
+            enemyGroup.position.set(
+                (Math.random() - 0.5) * 80,
+                0,
+                (Math.random() - 0.5) * 80
+            );
+
+            enemyGroup.userData = {
+                dx: (Math.random() - 0.5) * 0.15,
+                dz: (Math.random() - 0.5) * 0.15
+            };
+
+            scene.add(enemyGroup);
+            enemies3D.push(enemyGroup);
+        }
+
+        function fire3DWeapon() {
+            const currentGun = weaponConfig[weaponTier];
+            const bGeo = new THREE.SphereGeometry(0.15, 8, 8);
+            const bMat = new THREE.MeshBasicMaterial({ color: currentGun.color });
+            const bulletMesh = new THREE.Mesh(bGeo, bMat);
+
+            bulletMesh.position.set(player.position.x, 1.2, player.position.z);
+
+            bulletMesh.userData = {
+                vx: -Math.sin(playerRotation) * currentGun.speed,
+                vz: -Math.cos(playerRotation) * currentGun.speed,
+                life: 100
+            };
+
+            scene.add(bulletMesh);
+            bullets3D.push(bulletMesh);
+        }
+
+        function renderEngineLoop() {
+            if (!gameRunning) return;
+
+            player.rotation.y = playerRotation;
+
+            if (moveForward) {
+                player.position.x -= Math.sin(playerRotation) * 0.2;
+                player.position.z -= Math.cos(playerRotation) * 0.2;
+            }
+            if (moveBackward) {
+                player.position.x += Math.sin(playerRotation) * 0.2;
+                player.position.z += Math.cos(playerRotation) * 0.2;
+            }
+            if (moveLeft) {
+                player.position.x -= Math.cos(playerRotation) * 0.2;
+                player.position.z += Math.sin(playerRotation) * 0.2;
+            }
+            if (moveRight) {
+                player.position.x += Math.cos(playerRotation) * 0.2;
+                player.position.z -= Math.sin(playerRotation) * 0.2;
+            }
+
+            camera.position.x = player.position.x + Math.sin(playerRotation) * 6;
+            camera.position.z = player.position.z + Math.cos(playerRotation) * 6;
+            camera.position.y = player.position.y + 3.5;
+            camera.lookAt(player.position.x, player.position.y + 1, player.position.z);
+
+            for (let i = bullets3D.length - 1; i >= 0; i--) {
+                let b = bullets3D[i];
+                b.position.x += b.userData.vx;
+                b.position.z += b.userData.vz;
+                b.userData.life--;
+
+                if (b.userData.life <= 0) {
+                    scene.remove(b);
+                    bullets3D.splice(i, 1);
+                    continue;
+                }
+
+                for (let j = enemies3D.length - 1; j >= 0; j--) {
+                    let enemy = enemies3D[j];
+                    let distance = b.position.distanceTo(enemy.position);
+
+                    if (distance < 1.5) {
+                        scene.remove(enemy);
+                        enemies3D.splice(j, 1);
+                        scene.remove(b);
+                        bullets3D.splice(i, 1);
+
+                        if (weaponTier < weaponConfig.length - 1) {
+                            weaponTier++;
+                            document.getElementById('weapon-display').innerText = `WEAPON: ${weaponConfig[weaponTier].name}`;
+                            weaponMesh.scale.set(1, 1, 1 + weaponTier * 0.4);
+                        } else {
+                            end3DMatch(true);
+                            return;
+                        }
+
+                        document.getElementById('alive-count').innerText = enemies3D.length;
+                        break;
+                    }
+                }
+            }
+
+            enemies3D.forEach(enemy => {
+                enemy.position.x += enemy.userData.dx;
+                enemy.position.z += enemy.userData.dz;
+
+                if (Math.abs(enemy.position.x) > 140) enemy.userData.dx *= -1;
+                if (Math.abs(enemy.position.z) > 140) enemy.userData.dz *= -1;
+            });
+
+            renderer.render(scene, camera);
+            requestAnimationFrame(renderEngineLoop);
+        }
+
+        function startStormCountdown() {
+            let ticker = setInterval(() => {
+                if (!gameRunning) return;
+                matchTimer--;
+                document.getElementById('timer').innerText = matchTimer;
+
+                if (matchTimer <= 45) {
+                    stormSize3D -= 3.5;
+                }
+
+                let distanceFromCenter = player.position.distanceTo(new THREE.Vector3(0,0,0));
+                if (distanceFromCenter > stormSize3D) {
+                    end3DMatch(false);
+                    clearInterval(ticker);
+                }
+
+                if (matchTimer <= 0) {
+                    clearInterval(ticker);
+                    end3DMatch(false);
+                }
+            }, 1000);
+        }
+
+        function end3DMatch(victory) {
+            gameRunning = false;
+            document.exitPointerLock();
+            
+            let panel = document.getElementById('game-over-screen');
+            let banner = document.getElementById('end-title');
+            let info = document.getElementById('end-msg');
+
+            if (victory) {
+                banner.innerText = "🏆 VICTORY ROYALE";
+                banner.style.color = "#fbf034";
+                info.innerText = "Incredible! You navigated the 3D battle map and successfully dominated every weapon tier progression!";
+            } else {
+                banner.innerText = "ELIMINATED BY STORM";
+                banner.style.color = "#ff0055";
+                info.innerText = "You ran out of match duration or became completely trapped outside the safety circle wall.";
+            }
+            panel.style.display = 'flex';
+        }
+    </script>
+</body>
+</html>
