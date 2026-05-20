@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Memory Thief: 3D Gun Game with AI Enemies</title>
+    <title>Memory Thief: 3D Battle Royale</title>
     <style>
         body { 
             margin: 0; padding: 0; overflow: hidden; 
@@ -15,16 +15,10 @@
         h1 { margin: 0; font-size: 32px; letter-spacing: 2px; color: #ffff00; }
         p { margin: 5px 0 0 0; font-size: 16px; color: #00ffcc; font-weight: bold; }
         
-        /* 3D Fortnite Camera View Window */
-        #viewport {
-            width: 100vw; height: 100vh; perspective: 700px; overflow: hidden;
-            background: linear-gradient(to bottom, #87CEEB 0%, #87CEEB 45%, #2e7d32 45%, #2e7d32 100%);
-        }
         #gameCanvas {
-            position: absolute; left: 50%; top: 50%;
-            width: 2000px; height: 2000px;
-            margin-left: -1000px; margin-top: -1000px;
-            transform: rotateX(60deg); transform-style: preserve-3d;
+            display: block;
+            width: 100vw;
+            height: 100vh;
         }
         #hud {
             position: absolute; bottom: 20px; left: 20px;
@@ -32,8 +26,8 @@
             border-radius: 8px; border: 2px solid #ffff00; color: #fff; z-index: 10;
         }
         .bar { width: 180px; height: 12px; background: #333; margin-top: 5px; border: 1px solid #fff; }
-        #hp { height: 100%; background: #ff1744; width: 100%; transition: width 0.2s; }
-        #shield { height: 100%; background: #00e5ff; width: 100%; transition: width 0.2s; }
+        #hp { height: 100%; background: #ff1744; width: 100%; }
+        #shield { height: 100%; background: #00e5ff; width: 100%; }
         #kill-feed { position: absolute; top: 100px; right: 20px; color: #ffeb3b; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; display: none; font-family: monospace; }
     </style>
 </head>
@@ -41,26 +35,31 @@
 
     <div id="ui-layer">
         <h1>MEMORY THIEF: BATTLE ROYALE</h1>
-        <p>WASD to Move | Mouse to Aim | SMART ENEMIES ARE HUNTING AND BUILDING</p>
+        <p>WASD to Move | Mouse to Aim | TRUE 3D FORTNITE PERSPECTIVE VIEW</p>
     </div>
 
-    <div id="kill-feed" id="killFeed">ELIMINATION!</div>
+    <div id="kill-feed">ELIMINATION!</div>
 
     <div id="hud">
         SHIELD <div class="bar"><div id="shield"></div></div>
         HEALTH <div class="bar"><div id="hp"></div></div>
     </div>
 
-    <div id="viewport">
-        <canvas id="gameCanvas" width="2000" height="2000"></canvas>
-    </div>
+    <canvas id="gameCanvas"></canvas>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // Player Stats
-        const player = { x: 1000, y: 1000, size: 28, speed: 5, angle: 0, health: 100, shield: 100 };
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Player Configuration Space Tracker
+        const player = { x: 1000, y: 1000, size: 18, speed: 4, angle: 0, health: 100, shield: 100 };
         const keys = { w: false, a: false, s: false, d: false };
         const mouse = { x: window.innerWidth/2, y: window.innerHeight/2 };
         const mapSize = 2000;
@@ -70,8 +69,8 @@
         const bullets = [];
         let shootTimer = 0;
 
-        // Generate map structures
-        for (let i = 0; i < 25; i++) {
+        // Populate map environment layout blocks
+        for (let i = 0; i < 35; i++) {
             obstacles.push({
                 x: Math.random() * (mapSize - 400) + 200,
                 y: Math.random() * (mapSize - 400) + 200,
@@ -80,14 +79,14 @@
             });
         }
 
-        // Spawn Smart AI Enemies [INDEX]
-        for (let i = 0; i < 10; i++) {
+        // Spawn opponent players
+        for (let i = 0; i < 12; i++) {
             enemies.push({
                 id: i,
                 x: Math.random() * (mapSize - 400) + 200,
                 y: Math.random() * (mapSize - 400) + 200,
-                size: 24, health: 100, shield: 50,
-                angle: 0, shootCooldown: Math.random() * 30, buildCooldown: 100
+                size: 16, health: 100, shield: 50,
+                angle: 0, shootCooldown: Math.random() * 30
             });
         }
 
@@ -95,11 +94,11 @@
         window.addEventListener('keyup', (e) => { const k = e.key.toLowerCase(); if (k in keys) keys[k] = false; });
         window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
 
-        function firePlayerBullet() {
+        function fireBullet(x, y, angle, isEnemy) {
             bullets.push({
-                x: player.x, y: player.y,
-                vx: Math.cos(player.angle) * 15, vy: Math.sin(player.angle) * 15,
-                isEnemy: false
+                x: x, y: y,
+                vx: Math.cos(angle) * 12, vy: Math.sin(angle) * 12,
+                isEnemy: isEnemy
             });
         }
 
@@ -111,89 +110,80 @@
                 player.health -= amount;
             }
             if (player.health <= 0) {
-                player.health = 100; player.shield = 100; // Instant Respawn
+                player.health = 100; player.shield = 100;
                 player.x = 1000; player.y = 1000;
             }
             document.getElementById('hp').style.width = player.health + '%';
             document.getElementById('shield').style.width = player.shield + '%';
         }
 
+        // 3D Perspective Math Engine to convert flat top-down coordinates to a tilted view
+        function project(worldX, worldY) {
+            const dx = worldX - player.x;
+            const dy = worldY - player.y;
+
+            // Rotate map alignment according to player viewing rotation angles
+            const rotX = dx * Math.cos(-player.angle - Math.PI/2) - dy * Math.sin(-player.angle - Math.PI/2);
+            const rotY = dx * Math.sin(-player.angle - Math.PI/2) + dy * Math.cos(-player.angle - Math.PI/2);
+
+            // Pull position coordinates back to offset camera length behind character 
+            const camZ = rotY + 280; 
+            if (camZ <= 10) return null; 
+
+            const fov = 450;
+            const scale = fov / camZ;
+
+            // Compress rendering vertical coordinates by 0.5 to form 3D perspective slant
+            return {
+                x: canvas.width / 2 + rotX * scale,
+                y: canvas.height * 0.65 + rotY * scale * 0.45, 
+                scale: scale
+            };
+        }
+
         function loop() {
-            // Movement mechanics
             if (keys.w) { player.x += Math.cos(player.angle) * player.speed; player.y += Math.sin(player.angle) * player.speed; }
             if (keys.s) { player.x -= Math.cos(player.angle) * player.speed; player.y -= Math.sin(player.angle) * player.speed; }
             if (keys.a) { player.x += Math.sin(player.angle) * player.speed; player.y -= Math.cos(player.angle) * player.speed; }
             if (keys.d) { player.x -= Math.sin(player.angle) * player.speed; player.y += Math.cos(player.angle) * player.speed; }
 
-            // Aiming calculation
-            player.angle = Math.atan2(mouse.y - window.innerHeight * 0.65, mouse.x - window.innerWidth / 2);
+            player.angle = Math.atan2(mouse.y - canvas.height * 0.65, mouse.x - canvas.width / 2);
 
-            // Automatic player gun firing loop
             shootTimer++;
-            if (shootTimer >= 12) { firePlayerBullet(); shootTimer = 0; }
+            if (shootTimer >= 10) { fireBullet(player.x, player.y, player.angle, false); shootTimer = 0; }
 
-            // Advanced AI Enemy Intelligence Engine Loop [INDEX]
             enemies.forEach(enemy => {
-                const distanceToPlayer = Math.hypot(player.x - enemy.x, player.y - enemy.y);
+                const dist = Math.hypot(player.x - enemy.x, player.y - enemy.y);
                 enemy.angle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
 
-                // Attack State: If player gets close, chase and hunt them down
-                if (distanceToPlayer < 450) {
-                    enemy.x += Math.cos(enemy.angle) * 2.5;
-                    enemy.y += Math.sin(enemy.angle) * 2.5;
-
-                    // AI Combat Shooting Mechanics
+                if (dist < 500) {
+                    enemy.x += Math.cos(enemy.angle) * 1.8; enemy.y += Math.sin(enemy.angle) * 1.8;
                     enemy.shootCooldown--;
                     if (enemy.shootCooldown <= 0) {
-                        bullets.push({
-                            x: enemy.x, y: enemy.y,
-                            vx: Math.cos(enemy.angle + (Math.random() - 0.5) * 0.2) * 10,
-                            vy: Math.sin(enemy.angle + (Math.random() - 0.5) * 0.2) * 10,
-                            isEnemy: true
-                        });
-                        enemy.shootCooldown = 40; // Cooldown frames between shots
+                        fireBullet(enemy.x, enemy.y, enemy.angle, true);
+                        enemy.shootCooldown = 50;
                     }
-
-                    // AI Building Mechanics: Drop emergency brick protection walls if shot at
-                    enemy.buildCooldown--;
-                    if (enemy.buildCooldown <= 0 && distanceToPlayer < 250) {
-                        obstacles.push({
-                            x: enemy.x + Math.cos(enemy.angle) * 50,
-                            y: enemy.y + Math.sin(enemy.angle) * 50,
-                            w: 40, h: 40, color: '#d7ccc8' // Wood brick build color
-                        });
-                        enemy.buildCooldown = 180;
-                    }
-                } else {
-                    // Wander State: Patrol the island checking coordinates
-                    enemy.x += Math.cos(enemy.id) * 1;
-                    enemy.y += Math.sin(enemy.id) * 1;
                 }
             });
 
-            // Project and compute bullet hit register matrices
             for (let i = bullets.length - 1; i >= 0; i--) {
                 const b = bullets[i]; b.x += b.vx; b.y += b.vy;
                 if (b.x < 0 || b.x > mapSize || b.y < 0 || b.y > mapSize) { bullets.splice(i, 1); continue; }
 
                 if (b.isEnemy) {
-                    // Player hit register box detection
                     if (Math.hypot(b.x - player.x, b.y - player.y) < player.size) {
-                        damagePlayer(15); bullets.splice(i, 1); continue;
+                        damagePlayer(8); bullets.splice(i, 1);
                     }
                 } else {
-                    // Enemy hit registration loop
                     for (let j = enemies.length - 1; j >= 0; j--) {
                         const enemy = enemies[j];
                         if (Math.hypot(b.x - enemy.x, b.y - enemy.y) < enemy.size) {
                             if (enemy.shield > 0) enemy.shield -= 25; else enemy.health -= 35;
                             bullets.splice(i, 1);
-                            
                             if (enemy.health <= 0) {
                                 enemies.splice(j, 1);
-                                // Display temporary kill notification banner UI
                                 const feed = document.getElementById('kill-feed');
-                                feed.style.display = 'block'; feed.innerText = "ELIMINATED BOT_" + enemy.id + "!";
+                                feed.style.display = 'block'; feed.innerText = "ELIMINATED BOT_" + enemy.id;
                                 setTimeout(() => feed.style.display = 'none', 1500);
                             }
                             break;
@@ -202,51 +192,70 @@
                 }
             }
 
-            // Draw game map layers
-            ctx.fillStyle = '#388e3c'; ctx.fillRect(0, 0, mapSize, mapSize);
+            // Draw Background Blue Sky
+            ctx.fillStyle = '#87CEEB'; ctx.fillRect(0, 0, canvas.width, canvas.height); 
 
-            ctx.strokeStyle = '#4caf50'; ctx.lineWidth = 4;
-            for (let i = 0; i <= mapSize; i += 100) {
-                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, mapSize); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(mapSize, i); ctx.stroke();
-            }
+            // Create 3D Render depth sorting layer queues
+            const sceneDepthQueue = [];
 
-            // Draw Structures & Builds
-            obstacles.forEach(obs => { 
-                ctx.fillStyle = obs.color; ctx.fillRect(obs.x, obs.y, obs.w, obs.h); 
-                ctx.strokeStyle = '#1a237e'; ctx.lineWidth = 4; ctx.strokeRect(obs.x, obs.y, obs.w, obs.h); 
+            obstacles.forEach(obs => {
+                const pt = project(obs.x, obs.y);
+                if (pt) {
+                    sceneDepthQueue.push({
+                        z: pt.scale,
+                        draw: () => {
+                            ctx.fillStyle = obs.color;
+                            ctx.fillRect(pt.x - (obs.w * pt.scale)/2, pt.y - obs.h * pt.scale, obs.w * pt.scale, obs.h * pt.scale);
+                            ctx.strokeStyle = '#1a237e'; ctx.lineWidth = 1.5 * pt.scale;
+                            ctx.strokeRect(pt.x - (obs.w * pt.scale)/2, pt.y - obs.h * pt.scale, obs.w * pt.scale, obs.h * pt.scale);
+                        }
+                    });
+                }
             });
 
-            // Draw AI Enemies
             enemies.forEach(enemy => {
-                ctx.save(); ctx.translate(enemy.x, enemy.y); ctx.rotate(enemy.angle);
-                ctx.fillStyle = '#4a148c'; ctx.beginPath(); ctx.arc(0, 0, enemy.size, 0, Math.PI * 2); ctx.fill();
-                ctx.strokeStyle = '#ff0055'; ctx.lineWidth = 3; ctx.stroke();
-                ctx.fillStyle = '#222'; ctx.fillRect(8, -4, 25, 8); // Gun model
-                ctx.restore();
-
-                // Shield and Health configuration displays over target assets
-                ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - 20, enemy.y - 40, 40, 10);
-                ctx.fillStyle = '#00e5ff'; ctx.fillRect(enemy.x - 20, enemy.y - 40, (enemy.shield / 50) * 40, 4);
-                ctx.fillStyle = '#ff1744'; ctx.fillRect(enemy.x - 20, enemy.y - 36, (enemy.health / 100) * 40, 4);
+                const pt = project(enemy.x, enemy.y);
+                if (pt) {
+                    sceneDepthQueue.push({
+                        z: pt.scale,
+                        draw: () => {
+                            ctx.fillStyle = '#4a148c'; ctx.beginPath(); ctx.arc(pt.x, pt.y, enemy.size * pt.scale, 0, Math.PI * 2); ctx.fill();
+                            ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+                            
+                            ctx.fillStyle = '#ff1744'; ctx.fillRect(pt.x - 12 * pt.scale, pt.y - 22 * pt.scale, 24 * pt.scale, 3);
+                        }
+                    });
+                }
             });
 
-            // Draw Tracers (Player = Yellow, Enemy = Bright Pink)
             bullets.forEach(b => {
-                ctx.fillStyle = b.isEnemy ? '#ff00ff' : '#ffeb3b';
-                ctx.beginPath(); ctx.arc(b.x, b.y, 6, 0, Math.PI * 2); ctx.fill();
+                const pt = project(b.x, b.y);
+                if (pt) {
+                    sceneDepthQueue.push({
+                        z: pt.scale,
+                        draw: () => {
+                            ctx.fillStyle = b.isEnemy ? '#ff00ff' : '#ffeb3b';
+                            ctx.beginPath(); ctx.arc(pt.x, pt.y, 3 * pt.scale, 0, Math.PI * 2); ctx.fill();
+                        }
+                    });
+                }
             });
 
-            // Draw Main Character Player Model
-            ctx.save(); ctx.translate(player.x, player.y); ctx.rotate(player.angle);
-            ctx.fillStyle = '#e0f7fa'; ctx.beginPath(); ctx.arc(0, 0, player.size, 0, Math.PI * 2); ctx.fill();
-            ctx.strokeStyle = '#006064'; ctx.lineWidth = 4; ctx.stroke();
-            ctx.fillStyle = '#212121'; ctx.fillRect(10, -6, 35, 12);
-            ctx.restore();
+            // Depth Sort Matrix Loop (Draws furthest depth items first to build realistic perspective)
+            sceneDepthQueue.sort((a, b) => a.z - b.z);
 
-            // Handle Camera Translation matrix parameters
-            const camX = -player.x + 1000; const camY = -player.y + 1200;
-            canvas.style.transform = `rotateX(60deg) rotateZ(${-player.angle - Math.PI/2}rad) translate(${camX}px, ${camY}px)`;
+            // Draw Ground layout behind deep sorted environment queue
+            ctx.fillStyle = '#2e7d32'; ctx.fillRect(0, canvas.height * 0.48, canvas.width, canvas.height);
+
+            // Render all sorted elements onto screen canvas
+            sceneDepthQueue.forEach(obj => obj.draw());
+
+            // Draw Player Model in Foreground Viewport Space (centered, looking forward)
+            ctx.save(); ctx.translate(canvas.width / 2, canvas.height * 0.72);
+            ctx.fillStyle = '#ff4757'; ctx.beginPath(); ctx.arc(0, 0, player.size, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.stroke();
+            ctx.fillStyle = '#212121'; ctx.fillRect(-4, -28, 8, 24); // Extended weapon rifle barrel modeling
+            ctx.restore();
 
             requestAnimationFrame(loop);
         }
