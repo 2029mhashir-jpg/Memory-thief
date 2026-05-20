@@ -3,227 +3,469 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Battle Royale Shooter</title>
+    <title>Memory Royale</title>
     <style>
-        body {
+        * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            overflow: hidden;
-            background-color: #000;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             user-select: none;
         }
 
-        #gameCanvas {
-            width: 100vw;
+        body {
+            background-color: #0b0c10;
+            color: #66fcf1;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
             height: 100vh;
-            display: block;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
-        /* Fortnite-style Crosshair */
-        #crosshair {
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            background: radial-gradient(circle, #1f2833 0%, #0b0c10 100%);
+            border: 4px solid #45f3ff;
+            border-radius: 12px;
+            box-shadow: 0 0 20px #45f3ff;
+            overflow: hidden;
+        }
+
+        /* UI Overlay */
+        .hud {
+            position: absolute;
+            padding: 15px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            z-index: 10;
+        }
+
+        #stats-bar {
+            top: 0;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8), rgba(0,0,0,0));
+        }
+
+        .stat-box {
+            background: rgba(31, 40, 51, 0.8);
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid #66fcf1;
+        }
+
+        #prompt {
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 1px solid #45f3ff;
+            display: none;
+            text-align: center;
+            animation: pulse 1.5s infinite;
+        }
+
+        /* Storm Circle */
+        #storm {
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 10px;
-            height: 10px;
             transform: translate(-50%, -50%);
+            width: 1200px;
+            height: 1200px;
+            border: 4px dashed #ff0055;
+            border-radius: 50%;
             pointer-events: none;
-            z-index: 5;
+            transition: width 0.5s, height 0.5s;
+            box-shadow: inset 0 0 50px rgba(255, 0, 85, 0.2);
         }
-        #crosshair::before, #crosshair::after {
-            content: '';
-            position: absolute;
-            background: rgba(255, 255, 255, 0.8);
-        }
-        #crosshair::before { top: 4px; left: -5px; width: 20px; height: 2px; }
-        #crosshair::after { top: -5px; left: 4px; width: 2px; height: 20px; }
 
-        /* HUD overlay */
-        #hud {
+        /* Game Elements */
+        #player {
             position: absolute;
-            bottom: 20px;
-            right: 20px;
-            color: #fff;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 15px 25px;
-            border-radius: 8px;
-            border-left: 5px solid #00f0ff;
-            font-size: 24px;
-            font-weight: bold;
-            letter-spacing: 1px;
+            width: 32px;
+            height: 32px;
+            background-color: #66fcf1;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 0 10px #66fcf1;
+            transform: translate(-50%, -50%);
             z-index: 5;
         }
 
-        /* Start screen overlay */
-        #blocker {
+        .memory-node {
             position: absolute;
+            width: 24px;
+            height: 24px;
+            background: radial-gradient(circle, #ffe600 0%, #ff8800 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 15px #ffe600;
+            transform: translate(-50%, -50%);
+            animation: float 2s infinite ease-in-out;
+        }
+
+        .clue-object {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: #ff00ff;
+            transform: translate(-50%, -50%) rotate(45deg);
+            box-shadow: 0 0 10px #ff00ff;
+        }
+
+        /* Screens */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.85);
+            background: rgba(11, 12, 16, 0.95);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            color: #fff;
-            cursor: pointer;
+            z-index: 20;
             text-align: center;
-            z-index: 10;
+            padding: 40px;
         }
-        #instructions {
-            font-size: 28px;
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            color: #45f3ff;
+            text-shadow: 0 0 10px #45f3ff;
+        }
+
+        p {
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+            color: #c5a1ff;
+        }
+
+        button {
+            background: #45f3ff;
+            color: #0b0c10;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.2s;
             text-transform: uppercase;
-            color: #f7a205;
-            line-height: 1.6;
+        }
+
+        button:hover {
+            background: #66fcf1;
+            box-shadow: 0 0 15px #66fcf1;
+            transform: scale(1.05);
+        }
+
+        /* Minigame Modal */
+        #mystery-modal {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1f2833;
+            border: 3px solid #ff00ff;
+            padding: 30px;
+            border-radius: 10px;
+            z-index: 30;
+            width: 400px;
+            box-shadow: 0 0 30px rgba(255, 0, 255, 0.3);
+        }
+
+        #mystery-modal h3 {
+            margin-bottom: 15px;
+            color: #ff00ff;
+        }
+
+        .cipher-input {
+            width: 100%;
+            padding: 10px;
+            background: #0b0c10;
+            border: 1px solid #66fcf1;
+            color: #fff;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+
+        /* Animations */
+        @keyframes float {
+            0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
+            50% { transform: translate(-50%, -50%) translateY(-8px); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
         }
     </style>
-    <!-- Load Three.js 3D Engine -->
-    <script src="https://cloudflare.com"></script>
 </head>
 <body>
 
-    <div id="blocker">
-        <div id="instructions">
-            <strong>Click to Play</strong><br><br>
-            W, A, S, D = Move<br>
-            MOUSE = Look Around<br>
-            CLICK = Shoot<br><br>
-            <span style="font-size: 18px; color: #aaa;">Press ESC to pause</span>
+    <div id="game-container">
+        <!-- HUD -->
+        <div id="stats-bar" class="hud">
+            <div class="stat-box">Memories Stolen: <span id="score">0</span>/5</div>
+            <div class="stat-box" style="border-color: #ff0055;">Storm: <span id="storm-timer">60</span>s</div>
+            <div class="stat-box" style="border-color: #ff00ff;">Clues: <span id="clue-count">0</span></div>
+        </div>
+
+        <div id="prompt" class="hud">Press [E] to Intercept Memory</div>
+
+        <!-- Map Elements -->
+        <div id="storm"></div>
+        <div id="player"></div>
+        <div id="dynamic-elements"></div>
+
+        <!-- Main Menu -->
+        <div id="start-screen" class="screen">
+            <h1>MEMORY ROYALE</h1>
+            <p>Drop into the grid. Solve mysteries to unlock data vaults. Steal 5 memories before the storm closes in.</p>
+            <button onclick="startGame()">Battle Bus Drop</button>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="screen" style="display: none;">
+            <h1 id="game-over-title">VICTORY ROYALE</h1>
+            <p id="game-over-msg">You successfully extracted the core memories!</p>
+            <button onclick="location.reload()">Play Again</button>
+        </div>
+
+        <!-- Mystery Decryption Puzzle Modal -->
+        <div id="mystery-modal">
+            <h3>[CRYPTO-LOCK DETECTED]</h3>
+            <p id="puzzle-hint">Decipher the code to open the Memory Vault:</p>
+            <input type="text" id="puzzle-answer" class="cipher-input" placeholder="Type answer here...">
+            <button onclick="checkPuzzle()" style="width: 100%;">Submit Bypass</button>
         </div>
     </div>
 
-    <div id="crosshair"></div>
-    <div id="hud">HP: 100 | AMMO: 30</div>
-    <div id="gameCanvas"></div>
-
     <script>
-        // --- 1. SETUP 3D ENGINE ---
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x7dd2f3); // Sky Blue
+        // Game Configuration & State
+        const container = document.getElementById('game-container');
+        const playerEl = document.getElementById('player');
+        const dynamicLayer = document.getElementById('dynamic-elements');
+        
+        let player = { x: 400, y: 300, speed: 4 };
+        let keys = {};
+        let score = 0;
+        let clues = 0;
+        let stormSize = 1200;
+        let stormTime = 60;
+        let gameActive = false;
+        let activeInteractable = null;
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.getElementById('gameCanvas').appendChild(renderer.domElement);
+        // Sample Riddles/Mysteries
+        const puzzles = [
+            { hint: "I speak without a mouth and hear without ears. What am I?", ans: "echo" },
+            { hint: "The more of them you take, the more you leave behind. What are they?", ans: "footsteps" },
+            { hint: "Decrypt this binary memory string to text: 01001000 01001001", ans: "hi" }
+        ];
+        let currentPuzzle = null;
 
-        // --- 2. LIGHTING ---
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-        scene.add(ambientLight);
-        const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        sunLight.position.set(10, 20, 10);
-        scene.add(sunLight);
+        // Event Listeners
+        window.addEventListener('keydown', e => {
+            keys[e.key.toLowerCase()] = true;
+            if (e.key.toLowerCase() === 'e') handleInteraction();
+        });
+        window.addEventListener('keyup', e => keys[e.key.toLowerCase() = false]);
 
-        // --- 3. CREATE MAP (Grass and Obstacles) ---
-        const floorGeo = new THREE.PlaneGeometry(200, 200);
-        const floorMat = new THREE.MeshStandardMaterial({ color: 0x2e8b57 });
-        const floor = new THREE.Mesh(floorGeo, floorMat);
-        floor.rotation.x = -Math.PI / 2;
-        scene.add(floor);
-
-        // Spawn targets to shoot
-        const targets = [];
-        for (let i = 0; i < 15; i++) {
-            const boxGeo = new THREE.BoxGeometry(2, 5, 2);
-            const boxMat = new THREE.MeshStandardMaterial({ color: 0xff3333 });
-            const target = new THREE.Mesh(boxGeo, boxMat);
-            target.position.set((Math.random() - 0.5) * 80, 2.5, (Math.random() - 0.5) * 80);
-            scene.add(target);
-            targets.push(target);
+        function startGame() {
+            document.getElementById('start-screen').style.display = 'none';
+            gameActive = true;
+            spawnElements();
+            gameLoop();
+            startStormTimer();
         }
 
-        // --- 4. ENGINE CONTROLS CONFIG ---
-        camera.position.set(0, 2, 0); 
-        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
-        const speed = 0.2;
-        let yaw = 0, pitch = 0;
+        // Spawn Clues and Memories randomly across the arena
+        function spawnElements() {
+            dynamicLayer.innerHTML = '';
+            
+            // Spawn Clues (Magenta Squares)
+            for(let i=0; i<6; i++) {
+                let el = document.createElement('div');
+                el.className = 'clue-object';
+                el.style.left = Math.random() * 700 + 50 + 'px';
+                el.style.top = Math.random() * 500 + 50 + 'px';
+                el.dataset.type = 'clue';
+                dynamicLayer.appendChild(el);
+            }
 
-        // --- 5. MENU & MOUSE LOCK MECHANISM ---
-        const blocker = document.getElementById('blocker');
+            // Spawn Vault Memory Nodes (Orange Circles)
+            for(let i=0; i<5; i++) {
+                let el = document.createElement('div');
+                el.className = 'memory-node';
+                el.style.left = Math.random() * 700 + 50 + 'px';
+                el.style.top = Math.random() * 500 + 50 + 'px';
+                el.dataset.type = 'memory';
+                el.style.display = 'none'; // Hidden until clue solved
+                dynamicLayer.appendChild(el);
+            }
+        }
 
-        blocker.addEventListener('click', () => {
-            document.body.requestPointerLock();
-        });
+        // Main Engine Loop
+        function gameLoop() {
+            if (!gameActive) return;
 
-        document.addEventListener('pointerlockchange', () => {
-            if (document.pointerLockElement === document.body) {
-                blocker.style.display = 'none';
+            // Movement Physics
+            if (keys['w'] || keys['arrowup']) player.y = Math.max(16, player.y - player.speed);
+            if (keys['s'] || keys['arrowdown']) player.y = Math.min(584, player.y + player.speed);
+            if (keys['a'] || keys['arrowleft']) player.x = Math.max(16, player.x - player.speed);
+            if (keys['d'] || keys['arrowright']) player.x = Math.min(784, player.x + player.speed);
+
+            // Render Player position
+            playerEl.style.left = player.x + 'px';
+            playerEl.style.top = player.y + 'px';
+
+            checkCollisions();
+            checkStormDamage();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Proximity detection for Items/Vaults
+        function checkCollisions() {
+            let elements = dynamicLayer.children;
+            let promptEl = document.getElementById('prompt');
+            let nearby = false;
+            activeInteractable = null;
+
+            for (let el of elements) {
+                if (el.style.display === 'none') continue;
+
+                let ex = parseFloat(el.style.left);
+                let ey = parseFloat(el.style.top);
+                let dist = Math.hypot(player.x - ex, player.y - ey);
+
+                if (dist < 40) {
+                    nearby = true;
+                    activeInteractable = el;
+                    if (el.dataset.type === 'clue') {
+                        promptEl.innerText = "Press [E] to decrypt mystery clue";
+                    } else {
+                        promptEl.innerText = "Press [E] to steal memory bank";
+                    }
+                    promptEl.style.display = 'block';
+                    break;
+                }
+            }
+
+            if (!nearby) promptEl.style.display = 'none';
+        }
+
+        // Contextual Interaction trigger
+        function handleInteraction() {
+            if (!activeInteractable || !gameActive) return;
+
+            if (activeInteractable.dataset.type === 'clue') {
+                gameActive = false; // Pause gameplay during puzzle
+                currentPuzzle = puzzles[Math.floor(Math.random() * puzzles.length)];
+                document.getElementById('puzzle-hint').innerText = currentPuzzle.hint;
+                document.getElementById('mystery-modal').style.display = 'block';
+                document.getElementById('puzzle-answer').focus();
+            } 
+            else if (activeInteractable.dataset.type === 'memory') {
+                activeInteractable.remove();
+                score++;
+                document.getElementById('score').innerText = score;
+                document.getElementById('prompt').style.display = 'none';
+                if (score >= 5) endGame(true);
+            }
+        }
+
+        // Process Mystery input answer
+        function checkPuzzle() {
+            let ans = document.getElementById('puzzle-answer').value.trim().toLowerCase();
+            if (ans === currentPuzzle.ans) {
+                document.getElementById('mystery-modal').style.display = 'none';
+                document.getElementById('puzzle-answer').value = '';
+                
+                // Reward: Update UI clues and reveal a memory container location
+                clues++;
+                document.getElementById('clue-count').innerText = clues;
+                activeInteractable.remove();
+                
+                // Reveal one hidden memory node
+                let nodes = dynamicLayer.querySelectorAll('.memory-node');
+                for (let node of nodes) {
+                    if (node.style.display === 'none') {
+                        node.style.display = 'block';
+                        break;
+                    }
+                }
+                
+                gameActive = true;
+                gameLoop();
             } else {
-                blocker.style.display = 'flex';
+                alert("Decryption failed. Security lock active. Try again!");
             }
-        });
-
-        // --- 6. MOVEMENT AND AIMING CONTROLS ---
-        window.addEventListener('keydown', (e) => {
-            if (e.code === 'KeyW') moveForward = true;
-            if (e.code === 'KeyS') moveBackward = true;
-            if (e.code === 'KeyA') moveLeft = true;
-            if (e.code === 'KeyD') moveRight = true;
-        });
-
-        window.addEventListener('keyup', (e) => {
-            if (e.code === 'KeyW') moveForward = false;
-            if (e.code === 'KeyS') moveBackward = false;
-            if (e.code === 'KeyA') moveLeft = false;
-            if (e.code === 'KeyD') moveRight = false;
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (document.pointerLockElement !== document.body) return;
-
-            yaw -= e.movementX * 0.0025;
-            pitch -= e.movementY * 0.0025;
-            pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
-
-            camera.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
-        });
-
-        // Shooting logic (Clicking the screen)
-        window.addEventListener('click', () => {
-            if (document.pointerLockElement !== document.body) return;
-            
-            // Simple Raycaster to check if you hit a target box
-            const raycaster = new THREE.Raycaster();
-            const center = new THREE.Vector2(0, 0); // Center of target crosshair
-            raycaster.setFromCamera(center, camera);
-            
-            const intersects = raycaster.intersectObjects(targets);
-            if (intersects.length > 0) {
-                const hitTarget = intersects[0].object;
-                // Make hit target change color or flash yellow
-                hitTarget.material.color.setHex(0xffffff);
-                setTimeout(() => hitTarget.material.color.setHex(0xff3333), 100);
-            }
-        });
-
-        // --- 7. MAIN RENDER LOOP ---
-        function animate() {
-            requestAnimationFrame(animate);
-
-            if (document.pointerLockElement === document.body) {
-                const forwardVec = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-                forwardVec.y = 0;
-                forwardVec.normalize();
-
-                const rightVec = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
-                rightVec.y = 0;
-                rightVec.normalize();
-
-                if (moveForward) camera.position.addScaledVector(forwardVec, speed);
-                if (moveBackward) camera.position.addScaledVector(forwardVec, -speed);
-                if (moveRight) camera.position.addScaledVector(rightVec, speed);
-                if (moveLeft) camera.position.addScaledVector(rightVec, -speed);
-            }
-
-            renderer.render(scene, camera);
         }
 
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+        // Fortnite Storm mechanics
+        function startStormTimer() {
+            let timer = setInterval(() => {
+                if (!gameActive) return;
+                stormTime--;
+                document.getElementById('storm-timer').innerText = stormTime;
 
-        animate();
+                // Shrink storm boundaries over time
+                if (stormTime <= 40) {
+                    stormSize = Math.max(200, stormSize - 8);
+                    let stormEl = document.getElementById('storm');
+                    stormEl.style.width = stormSize + 'px';
+                    stormEl.style.height = stormSize + 'px';
+                }
+
+                if (stormTime <= 0) {
+                    clearInterval(timer);
+                    endGame(false);
+                }
+            }, 1000);
+        }
+
+        // Check if user is out inside the storm boundary
+        function checkStormDamage() {
+            let dx = player.x - 400;
+            let dy = player.y - 300;
+            let playerDistFromCenter = Math.hypot(dx, dy);
+            
+            if (playerDistFromCenter > stormSize / 2) {
+                endGame(false); // Eliminated by storm
+            }
+        }
+
+        function endGame(victory) {
+            gameActive = false;
+            let screen = document.getElementById('game-over-screen');
+            let title = document.getElementById('game-over-title');
+            let msg = document.getElementById('game-over-msg');
+
+            if (victory) {
+                title.innerText = "VICTORY ROYALE";
+                title.style.color = "#45f3ff";
+                msg.innerText = "You deciphered all database files and extracted the memories safely!";
+            } else {
+                title.innerText = "ELIMINATED BY STORM";
+                title.style.color = "#ff0055";
+                msg.innerText = "You ran out of time or got caught out in the memory storm collapse.";
+            }
+            screen.style.display = 'flex';
+        }
     </script>
 </body>
 </html>
