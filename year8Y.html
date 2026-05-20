@@ -1,16 +1,45 @@
 <html>
 <head>
-    <title>Memory thief</title>
+    <title>Memory Thief</title>
+    <style>
+        body { font-family: sans-serif; margin: 40px; line-height: 1.6; }
+        button { margin-right: 10px; padding: 10px; cursor: pointer; }
+    </style>
 </head>
 <body>
 
     <h1>Memory Thief: The Text Game</h1>
-    <p>You wake up in a dark room. Your memories are completely missing.</p>
-    <p>There is a heavy iron door and a small wooden desk.</p>
+    
+    <!-- This ID lets JavaScript update the story text dynamically -->
+    <p id="story-text">You wake up in a dark room. Your memories are completely missing. There is a heavy iron door and a small wooden desk.</p>
 
     <!-- Game Choices -->
-    <button onclick="alert('The door is locked tight. You need a key.')">Examine the door</button>
-    <button onclick="alert('You open the drawer and find a rusty key!')">Search the desk</button>
+    <div id="choices">
+        <button onclick="examineDoor()">Examine the door</button>
+        <button onclick="searchDesk()">Search the desk</button>
+    </div>
+
+    <script>
+        // Game State: Tracks if the player has the key
+        let hasKey = false;
+
+        function examineDoor() {
+            const story = document.getElementById("story-text");
+            
+            if (hasKey) {
+                story.innerHTML = "You use the rusty key on the heavy iron door. It creaks open! You escape the dark room. <strong>You win!</strong>";
+                document.getElementById("choices").style.display = "none"; // Hide buttons on win
+            } else {
+                story.innerText = "The door is locked tight. You need a key to open it.";
+            }
+        }
+
+        function searchDesk() {
+            const story = document.getElementById("story-text");
+            hasKey = true; // Updates the game state
+            story.innerText = "You search the desk, open the drawer, and find a rusty key!";
+        }
+    </script>
 
 </body>
 </html>
