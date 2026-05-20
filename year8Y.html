@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fortnite Gun Game Royale (No Mouse)</title>
+    <title>3D Fortnite Gun Game</title>
     <style>
         * {
             box-sizing: border-box;
@@ -13,65 +13,58 @@
         }
 
         body {
-            background-color: #0c0f1d;
-            color: #fff;
-            font-family: 'Impact', 'Arial Black', sans-serif;
+            background-color: #000;
+            margin: 0;
             overflow: hidden;
+            font-family: 'Impact', sans-serif;
+        }
+
+        /* 3D Game Canvas */
+        canvas {
+            display: block;
+            width: 100vw;
             height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
         }
 
-        #game-container {
-            position: relative;
-            width: 1000px;
-            height: 700px;
-            background: radial-gradient(circle, #2b3553 0%, #0f111a 100%);
-            border: 6px solid #fbf034;
-            border-radius: 20px;
-            box-shadow: 0 0 40px rgba(251, 240, 52, 0.3);
-            overflow: hidden;
-        }
-
-        /* Fortnite Styled HUD */
+        /* HUD Styling */
         .hud {
             position: absolute;
             z-index: 10;
             text-transform: uppercase;
             font-style: italic;
             text-shadow: 2px 2px 0px #000;
+            color: #fff;
         }
 
-        #top-right-hud {
+        #top-hud {
             top: 20px;
             right: 20px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
             align-items: flex-end;
         }
 
         .hud-card {
             background: rgba(0, 0, 0, 0.6);
-            padding: 8px 16px;
+            padding: 10px 20px;
             border-radius: 4px;
-            border-right: 6px solid #00f0ff;
-            font-size: 1.3rem;
+            border-right: 6px solid #fbf034;
+            font-size: 1.4rem;
             letter-spacing: 1px;
         }
 
         #bottom-bars {
-            bottom: 20px;
+            bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            gap: 15px;
+            gap: 20px;
         }
 
         .bar-container {
-            width: 200px;
-            height: 25px;
+            width: 220px;
+            height: 30px;
             background: rgba(0,0,0,0.5);
             border: 2px solid #fff;
             border-radius: 5px;
@@ -82,132 +75,37 @@
         .bar-fill {
             height: 100%;
             width: 100%;
-            transition: width 0.1s;
         }
 
         .bar-text {
             position: absolute;
             width: 100%;
             text-align: center;
-            top: 2px;
-            font-size: 1rem;
+            top: 4px;
+            font-size: 1.1rem;
             font-weight: bold;
         }
 
-        #inventory-slots {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            display: flex;
-            gap: 8px;
-        }
-
-        .slot {
-            width: 150px;
-            height: 60px;
-            background: rgba(0, 0, 0, 0.6);
-            border: 2px solid #555;
-            border-radius: 8px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 1rem;
-            color: #00ff55;
-        }
-
-        .slot.active {
-            border-color: #fbf034;
-            box-shadow: 0 0 10px #fbf034;
-        }
-
-        /* Entities & Objects */
-        #player {
-            position: absolute;
-            width: 34px;
-            height: 34px;
-            background-color: #00f0ff;
-            border-radius: 50%;
-            border: 3px solid #fff;
-            box-shadow: 0 0 15px #00f0ff;
-            z-index: 5;
-        }
-
-        /* Gun barrel indicator */
-        #player::after {
-            content: '';
-            position: absolute;
-            top: 11px;
-            left: 26px;
-            width: 15px;
-            height: 6px;
-            background-color: #fbf034;
-        }
-
-        .enemy {
-            position: absolute;
-            width: 32px;
-            height: 32px;
-            background-color: #ff0055;
-            border-radius: 50%;
-            border: 3px solid #fff;
-            z-index: 4;
-        }
-
-        .bullet {
-            position: absolute;
-            width: 8px;
-            height: 8px;
-            background-color: #fbf034;
-            border-radius: 50%;
-            z-index: 6;
-        }
-
-        .build-wall {
-            position: absolute;
-            width: 40px;
-            height: 40px;
-            background-color: #8b5a2b;
-            border: 2px solid #5c3a1a;
-            border-radius: 4px;
-            z-index: 3;
-        }
-
-        /* Fortnite Storm */
-        #storm {
+        #crosshair {
             position: absolute;
             top: 50%;
             left: 50%;
-            transform: translate(-50%, -50%);
-            width: 1600px;
-            height: 1600px;
-            border: 6px dashed #ff00ff;
+            width: 10px;
+            height: 10px;
+            border: 2px solid #00ffff;
             border-radius: 50%;
+            transform: translate(-50%, -50%);
             pointer-events: none;
-            box-shadow: inset 0 0 100px rgba(255, 0, 255, 0.4);
-            transition: width 0.2s, height 0.2s;
+            z-index: 10;
         }
 
-        /* Controls Help Guide Overlay */
-        #controls-guide {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(0,0,0,0.7);
-            padding: 12px;
-            border-radius: 6px;
-            font-family: Arial, sans-serif;
-            font-size: 0.9rem;
-            line-height: 1.4;
-            border-left: 4px solid #fbf034;
-        }
-
-        /* UI Screen Overlays */
+        /* Screen Overlays */
         .screen {
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            height: 100vh;
             background: rgba(15, 17, 26, 0.95);
             display: flex;
             flex-direction: column;
@@ -218,7 +116,7 @@
         }
 
         h1 {
-            font-size: 4rem;
+            font-size: 4.5rem;
             color: #fbf034;
             text-shadow: 3px 3px 0px #000, 0 0 30px rgba(251,240,52,0.5);
             margin-bottom: 20px;
@@ -227,7 +125,7 @@
         p {
             font-family: 'Arial', sans-serif;
             color: #cbd5e1;
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             max-width: 600px;
             margin-bottom: 30px;
             line-height: 1.6;
@@ -238,348 +136,333 @@
             background: #ff0055;
             color: #fff;
             border: none;
-            padding: 15px 45px;
-            font-size: 1.7rem;
+            padding: 15px 50px;
+            font-size: 2rem;
             border-radius: 6px;
             cursor: pointer;
             text-shadow: 2px 2px 0 #000;
             box-shadow: 0 5px 0 #990033;
-            transition: 0.1s;
-        }
-
-        button:hover {
-            transform: translateY(2px);
-            box-shadow: 0 3px 0 #990033;
         }
     </style>
+    <!-- Import Three.js Library for Core 3D Rendering Engine -->
+    <script src="https://cloudflare.com"></script>
 </head>
 <body>
 
-    <div id="game-container">
-        <!-- Controls Guide Card -->
-        <div id="controls-guide" class="hud">
-            <b style="color: #fbf034;">KEYBOARD ONLY CONTROLS:</b><br>
-            • Move: <span style="color:#00f0ff">WASD</span><br>
-            • Shoot / Aim: <span style="color:#00f0ff">Arrow Keys</span><br>
-            • Build Wall: <span style="color:#00f0ff">Spacebar</span>
+    <div id="crosshair"></div>
+
+    <!-- Fortnite HUD Layer -->
+    <div id="top-hud" class="hud">
+        <div class="hud-card" style="border-right-color: #ffaa00;" id="weapon-display">WEAPON: Tier 1 (Pistol)</div>
+        <div class="hud-card" style="border-right-color: #ff00ff;">Storm Collapse: <span id="timer">60</span>s</div>
+        <div class="hud-card" style="border-right-color: #00f0ff;">Opponents Left: <span id="alive-count">5</span></div>
+    </div>
+
+    <div id="bottom-bars" class="hud">
+        <div class="bar-container">
+            <div id="shield-bar" class="bar-fill" style="background: #00bcff; width: 100%;"></div>
+            <div class="bar-text">SHIELD: <span id="shield-txt">100</span></div>
         </div>
-
-        <!-- Fortnite HUD -->
-        <div id="top-right-hud" class="hud">
-            <div class="hud-card" style="border-right-color: #ff00ff;">Storm: <span id="timer">60</span>s</div>
-            <div class="hud-card" style="border-right-color: #00ff55;">Mats (Wood): <span id="mats-count">100</span></div>
-            <div class="hud-card" style="border-right-color: #ffaa00;">Players Left: <span id="players-alive">20</span></div>
-        </div>
-
-        <div id="bottom-bars" class="hud">
-            <!-- Shield Bar -->
-            <div class="bar-container">
-                <div id="shield-bar" class="bar-fill" style="background: #00bcff; width: 100%;"></div>
-                <div class="bar-text">SHIELD: <span id="shield-txt">100</span></div>
-            </div>
-            <!-- Health Bar -->
-            <div class="bar-container">
-                <div id="health-bar" class="bar-fill" style="background: #00ff55; width: 100%;"></div>
-                <div class="bar-text">HEALTH: <span id="health-txt">100</span></div>
-            </div>
-        </div>
-
-        <!-- Inventory Slots -->
-        <div id="inventory-slots">
-            <div class="slot active" id="weapon-slot">1. Gray Pistol</div>
-        </div>
-
-        <!-- Layers -->
-        <div id="storm"></div>
-        <div id="player"></div>
-        <div id="game-layer"></div>
-
-        <!-- Menu Screen -->
-        <div id="start-screen" class="screen">
-            <h1>FORTNITE GUN GAME</h1>
-            <p>Keyboard Edition! Move with WASD. Shoot and aim instantly using your Arrow keys. Tap Spacebar to drop walls. Cycle through 5 tiers to achieve a Victory Royale!</p>
-            <button onclick="startGame()">Drop From Battle Bus</button>
-        </div>
-
-        <!-- Game Over Screen -->
-        <div id="game-over-screen" class="screen" style="display: none;">
-            <h1 id="end-title">VICTORY ROYALE</h1>
-            <p id="end-msg">You cycled through every weapon and conquered the lobby!</p>
-            <button onclick="location.reload()">Return to Lobby</button>
+        <div class="bar-container">
+            <div id="health-bar" class="bar-fill" style="background: #00ff55; width: 100%;"></div>
+            <div class="bar-text">HEALTH: <span id="health-txt">100</span></div>
         </div>
     </div>
 
-    <script>
-        const container = document.getElementById('game-container');
-        const playerEl = document.getElementById('player');
-        const gameLayer = document.getElementById('game-layer');
-        const weaponSlot = document.getElementById('weapon-slot');
+    <!-- Interface Menus -->
+    <div id="start-screen" class="screen">
+        <h1>3D GUN GAME ROYALE</h1>
+        <p>Drop into a fully 3D Battle Arena! Use WASD to move your character. Use your mouse to aim your weapon and left-click to fire. Eliminate 3D player models to rank up your guns and outrun the storm circle!</p>
+        <button onclick="init3DGame()">Jump From Battle Bus</button>
+    </div>
 
-        // Gun Game Weapons Configuration
-        const weaponsList = [
-            { name: "1. Gray Pistol", color: "#ffffff", speed: 8, delay: 400 },
-            { name: "2. Blue SMG", color: "#00bcff", speed: 12, delay: 180 },
-            { name: "3. Purple Scar AR", color: "#c5a1ff", speed: 16, delay: 300 },
-            { name: "4. Gold RPG", color: "#ffaa00", speed: 6, delay: 800 },
-            { name: "5. Mythic Gun", color: "#ff0055", speed: 22, delay: 90 }
+    <div id="game-over-screen" class="screen" style="display: none;">
+        <h1 id="end-title">VICTORY ROYALE</h1>
+        <p id="end-msg">You conquered the 3D loop and leveled up every single weapon class!</p>
+        <button onclick="location.reload()">Return to Lobby</button>
+    </div>
+
+    <script>
+        // Core 3D Game Constants & States
+        let scene, camera, renderer;
+        let player, playerBody, weaponMesh;
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        let gameRunning = false;
+        let mouseX = 0, playerRotation = 0;
+        
+        let enemies3D = [];
+        let bullets3D = [];
+        let weaponTier = 0;
+        let stormSize3D = 180;
+        let matchTimer = 60;
+
+        const weaponConfig = [
+            { name: "Tier 1: Pistol", color: 0xcccccc, size: 0.2, speed: 2.2 },
+            { name: "Tier 2: Tactical Shotgun", color: 0x00bcff, size: 0.3, speed: 2.8 },
+            { name: "Tier 3: Heavy Scar AR", color: 0xc5a1ff, size: 0.4, speed: 3.5 },
+            { name: "Tier 4: Mythic Railgun", color: 0xff0055, size: 0.5, speed: 5.0 }
         ];
 
-        // Engine State
-        let gameRunning = false;
-        let player = { x: 500, y: 350, speed: 5, angle: 0, health: 100, shield: 100, mats: 100, currentWeapon: 0 };
-        let keys = {};
-        let bullets = [];
-        let enemies = [];
-        let walls = [];
-        let aliveCount = 20;
-        let stormSize = 1600;
-        let stormTime = 60;
-        let lastFired = 0;
-
-        // Key Monitors
-        window.addEventListener('keydown', e => {
-            keys[e.key.toLowerCase()] = true;
-            // Prevent scrolling behavior for arrow keys & spacebar inside browser window
-            if(["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(e.key.toLowerCase())) {
-                e.preventDefault();
-            }
-            if (e.key === " ") {
-                placeWall();
-            }
+        // Track standard keyboard layouts
+        window.addEventListener('keydown', e => handleKeys(e.code, true));
+        window.addEventListener('keyup', e => handleKeys(e.code, false));
+        window.addEventListener('mousemove', e => {
+            if (!gameRunning) return;
+            // Map screen coordinates directly to rotational 3D orientation physics
+            playerRotation -= e.movementX * 0.003;
         });
-        window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+        window.addEventListener('mousedown', () => {
+            if (gameRunning) fire3DWeapon();
+        });
 
-        function startGame() {
+        function handleKeys(code, isDown) {
+            if (code === 'KeyW' || code === 'ArrowUp') moveForward = isDown;
+            if (code === 'KeyS' || code === 'ArrowDown') moveBackward = isDown;
+            if (code === 'KeyA' || code === 'ArrowLeft') moveLeft = isDown;
+            if (code === 'KeyD' || code === 'ArrowRight') moveRight = isDown;
+        }
+
+        function init3DGame() {
             document.getElementById('start-screen').style.display = 'none';
-            gameRunning = true;
-            initializeMap();
-            requestAnimationFrame(gameLoop);
-            startStormTicker();
-        }
+            document.body.requestPointerLock(); // Locks mouse cursor directly to center screen for fluid FPS control
 
-        function initializeMap() {
-            for(let i=0; i<19; i++) {
-                spawnEnemy();
+            // 1. Create 3D Scene World
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0c0f1d);
+            scene.fog = new THREE.FogExp2(0x0c0f1d, 0.015);
+
+            // 2. Set Up Perspective Views Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+            // 3. Build 3D Arena Ground Grid Map Environment
+            const floorGeo = new THREE.PlaneGeometry(300, 300);
+            const floorMat = new THREE.MeshLambertMaterial({ color: 0x1e2538, side: THREE.DoubleSide });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = Math.PI / 2;
+            scene.add(floor);
+
+            // 4. Create Player Character Avatar Models
+            player = new THREE.Group();
+            
+            // Build 3D Player Body
+            const bodyGeo = new THREE.CylinderGeometry(0.6, 0.6, 2, 16);
+            const bodyMat = new THREE.MeshLambertMaterial({ color: 0x00f0ff });
+            playerBody = new THREE.Mesh(bodyGeo, bodyMat);
+            playerBody.position.y = 1;
+            player.add(playerBody);
+
+            // Build 3D Gun Attachment asset welded to player body
+            const gunGeo = new THREE.BoxGeometry(0.2, 0.2, 1.2);
+            const gunMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+            weaponMesh = new THREE.Mesh(gunGeo, gunMat);
+            weaponMesh.position.set(0.5, 1.2, -0.8);
+            player.add(weaponMesh);
+
+            player.position.set(0, 0, 0);
+            scene.add(player);
+
+            // 5. Add Environmental Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 10);
+            scene.add(directionalLight);
+
+            // 6. Generate 3D Rival Enemy Combatants
+            for(let i=0; i<5; i++) {
+                spawn3DEnemy();
             }
+
+            // 7. Initialize Canvas WebGL Hardware Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            gameRunning = true;
+            requestAnimationFrame(renderEngineLoop);
+            startStormCountdown();
         }
 
-        function spawnEnemy() {
-            let enemy = {
-                x: Math.random() * 900 + 50,
-                y: Math.random() * 600 + 50,
-                dx: (Math.random() - 0.5) * 4,
-                dy: (Math.random() - 0.5) * 4,
-                el: document.createElement('div')
+        function spawn3DEnemy() {
+            const enemyGroup = new THREE.Group();
+            
+            // Create full 3D cylinder models to act as actual player enemies
+            const eBodyGeo = new THREE.CylinderGeometry(0.6, 0.6, 2, 16);
+            const eBodyMat = new THREE.MeshLambertMaterial({ color: 0xff0055 });
+            const eBody = new THREE.Mesh(eBodyGeo, eBodyMat);
+            eBody.position.y = 1;
+            enemyGroup.add(eBody);
+
+            // Give them random initial vector spawning coordinates across the 3D grid
+            enemyGroup.position.set(
+                (Math.random() - 0.5) * 80,
+                0,
+                (Math.random() - 0.5) * 80
+            );
+
+            // Store internal movement vectors
+            enemyGroup.userData = {
+                dx: (Math.random() - 0.5) * 0.15,
+                dz: (Math.random() - 0.5) * 0.15
             };
-            enemy.el.className = 'enemy';
-            enemy.el.style.left = enemy.x + 'px';
-            enemy.el.style.top = enemy.y + 'px';
-            gameLayer.appendChild(enemy.el);
-            enemies.push(enemy);
+
+            scene.add(enemyGroup);
+            enemies3D.push(enemyGroup);
         }
 
-        function fireWeapon(angleOverride) {
-            let now = Date.now();
-            let gun = weaponsList[player.currentWeapon];
-            if (now - lastFired < gun.delay) return;
-            lastFired = now;
+        function fire3DWeapon() {
+            const currentGun = weaponConfig[weaponTier];
+            
+            // Generate a 3D Sphere mesh asset acting as a moving bullet
+            const bGeo = new THREE.SphereGeometry(0.15, 8, 8);
+            const bMat = new THREE.MeshBasicMaterial({ color: currentGun.color });
+            const bulletMesh = new THREE.Mesh(bGeo, bMat);
 
-            // Turn player body toward shooting direction
-            player.angle = angleOverride;
-            playerEl.style.transform = `translate(-50%, -50%) rotate(${player.angle}rad)`;
+            // Position it right at muzzle location tip of our 3D gun barrel mesh object
+            bulletMesh.position.set(player.position.x, 1.2, player.position.z);
 
-            let b = {
-                x: player.x,
-                y: player.y,
-                dx: Math.cos(angleOverride) * gun.speed,
-                dy: Math.sin(angleOverride) * gun.speed,
-                el: document.createElement('div')
+            // Add directional velocity vectors utilizing player rotation mechanics
+            bulletMesh.userData = {
+                vx: -Math.sin(playerRotation) * currentGun.speed,
+                vz: -Math.cos(playerRotation) * currentGun.speed,
+                life: 100
             };
-            b.el.className = 'bullet';
-            b.el.style.backgroundColor = gun.color;
-            gameLayer.appendChild(b.el);
-            bullets.push(b);
+
+            scene.add(bulletMesh);
+            bullets3D.push(bulletMesh);
         }
 
-        function placeWall() {
-            if (!gameRunning || player.mats < 10) return;
-            player.mats -= 10;
-            document.getElementById('mats-count').innerText = player.mats;
-
-            let wall = {
-                x: player.x + Math.cos(player.angle) * 45,
-                y: player.y + Math.sin(player.angle) * 45,
-                el: document.createElement('div')
-            };
-            wall.el.className = 'build-wall';
-            wall.el.style.left = (wall.x - 20) + 'px';
-            wall.el.style.top = (wall.y - 20) + 'px';
-            gameLayer.appendChild(wall.el);
-            walls.push(wall);
-        }
-
-        // Engine Processing
-        function gameLoop() {
+        // Main 3D Game Render Frame Loop Engine
+        function renderEngineLoop() {
             if (!gameRunning) return;
 
-            // Movement Processing (WASD)
-            if (keys['w']) player.y = Math.max(17, player.y - player.speed);
-            if (keys['s']) player.y = Math.min(683, player.y + player.speed);
-            if (keys['a']) player.x = Math.max(17, player.x - player.speed);
-            if (keys['d']) player.x = Math.min(983, player.x + player.speed);
+            // Player Physics Movement & Direction Vectors Processing
+            player.rotation.y = playerRotation;
 
-            playerEl.style.left = player.x + 'px';
-            playerEl.style.top = player.y + 'px';
+            if (moveForward) {
+                player.position.x -= Math.sin(playerRotation) * 0.2;
+                player.position.z -= Math.cos(playerRotation) * 0.2;
+            }
+            if (moveBackward) {
+                player.position.x += Math.sin(playerRotation) * 0.2;
+                player.position.z += Math.cos(playerRotation) * 0.2;
+            }
+            if (moveLeft) {
+                player.position.x -= Math.cos(playerRotation) * 0.2;
+                player.position.z += Math.sin(playerRotation) * 0.2;
+            }
+            if (moveRight) {
+                player.position.x += Math.cos(playerRotation) * 0.2;
+                player.position.z -= Math.sin(playerRotation) * 0.2;
+            }
 
-            // Attack Processing (Arrow keys check direction + fire auto)
-            if (keys['arrowup'])    fireWeapon(-Math.PI / 2);
-            else if (keys['arrowdown'])  fireWeapon(Math.PI / 2);
-            else if (keys['arrowleft'])  fireWeapon(Math.PI);
-            else if (keys['arrowright']) fireWeapon(0);
+            // Lock Camera Position directly behind 3D Player Avatar head (Authentic Fortnite Third Person view)
+            camera.position.x = player.position.x + Math.sin(playerRotation) * 6;
+            camera.position.z = player.position.z + Math.cos(playerRotation) * 6;
+            camera.position.y = player.position.y + 3.5;
+            camera.lookAt(player.position.x, player.position.y + 1, player.position.z);
 
-            // Bullet Simulation
-            for(let i=bullets.length-1; i>=0; i--) {
-                let b = bullets[i];
-                b.x += b.dx;
-                b.y += b.dy;
-                b.el.style.left = b.x + 'px';
-                b.el.style.top = b.y + 'px';
+            // Process Moving 3D Bullets
+            for (let i = bullets3D.length - 1; i >= 0; i--) {
+                let b = bullets3D[i];
+                b.position.x += b.userData.vx;
+                b.position.z += b.userData.vz;
+                b.userData.life--;
 
-                if(b.x < 0 || b.x > 1000 || b.y < 0 || b.y > 700) {
-                    b.el.remove();
-                    bullets.splice(i,1);
+                if (b.userData.life <= 0) {
+                    scene.remove(b);
+                    bullets3D.splice(i, 1);
                     continue;
                 }
 
-                // Bullet collision check on walls
-                let hitWall = false;
-                for(let wall of walls) {
-                    let wx = parseFloat(wall.el.style.left) + 20;
-                    let wy = parseFloat(wall.el.style.top) + 20;
-                    if(Math.hypot(b.x - wx, b.y - wy) < 25) {
-                        b.el.remove();
-                        bullets.splice(i,1);
-                        hitWall = true;
-                        break;
-                    }
-                }
-                if (hitWall) continue;
+                // Check 3D collision intersections against enemy character cylinders
+                for (let j = enemies3D.length - 1; j >= 0; j--) {
+                    let enemy = enemies3D[j];
+                    let distance = b.position.distanceTo(enemy.position);
 
-                // Bullet collision check on enemies
-                for(let j=enemies.length-1; j>=0; j--) {
-                    let e = enemies[j];
-                    if(Math.hypot(b.x - e.x, b.y - e.y) < 20) {
-                        e.el.remove();
-                        enemies.splice(j,1);
-                        b.el.remove();
-                        bullets.splice(i,1);
-                        aliveCount--;
-                        document.getElementById('players-alive').innerText = aliveCount;
+                    // Collision confirmed: 3D hit recorded
+                    if (distance < 1.5) {
+                        scene.remove(enemy);
+                        enemies3D.splice(j, 1);
+                        scene.remove(b);
+                        bullets3D.splice(i, 1);
 
-                        // Gun Game Weapon Upgrade Mechanics
-                        if (player.currentWeapon < weaponsList.length - 1) {
-                            player.currentWeapon++;
-                            weaponSlot.innerText = weaponsList[player.currentWeapon].name;
-                            weaponSlot.style.color = weaponsList[player.currentWeapon].color;
+                        // Trigger Gun Game Level-Up Progression System
+                        if (weaponTier < weaponConfig.length - 1) {
+                            weaponTier++;
+                            document.getElementById('weapon-display').innerText = `WEAPON: ${weaponConfig[weaponTier].name}`;
+                            // Visually scale the 3D gun size to look cooler
+                            weaponMesh.scale.set(1, 1, 1 + weaponTier * 0.4);
                         } else {
-                            endGame(true); // Victory condition reached
+                            end3DMatch(true); // Victory Condition Met!
                             return;
                         }
+
+                        document.getElementById('alive-count').innerText = enemies3D.length;
                         break;
                     }
                 }
             }
 
-            // Enemy Movement Loop
-            enemies.forEach(e => {
-                e.x += e.dx;
-                e.y += e.dy;
-                if(e.x < 20 || e.x > 980) e.dx *= -1;
-                if(e.y < 20 || e.y > 680) e.dy *= -1;
-                e.el.style.left = e.x + 'px';
-                e.el.style.top = e.y + 'px';
+            // Animate Enemy 3D Model Positions
+            enemies3D.forEach(enemy => {
+                enemy.position.x += enemy.userData.dx;
+                enemy.position.z += enemy.userData.dz;
 
-                // Check collision with built walls to bounce off them
-                walls.forEach(wall => {
-                    let wx = parseFloat(wall.el.style.left) + 20;
-                    let wy = parseFloat(wall.el.style.top) + 20;
-                    if(Math.hypot(e.x - wx, e.y - wy) < 30) {
-                        e.dx *= -1;
-                        e.dy *= -1;
-                    }
-                });
-
-                // Collision damage to player
-                if(Math.hypot(player.x - e.x, player.y - e.y) < 25) {
-                    damagePlayer(0.6);
-                }
+                // Keep enemies within arena map limits
+                if (Math.abs(enemy.position.x) > 140) enemy.userData.dx *= -1;
+                if (Math.abs(enemy.position.z) > 140) enemy.userData.dz *= -1;
             });
 
-            checkStormContainment();
-
-            requestAnimationFrame(gameLoop);
+            renderer.render(scene, camera);
+            requestAnimationFrame(renderEngineLoop);
         }
 
-        function damagePlayer(amt) {
-            if(player.shield > 0) {
-                player.shield = Math.max(0, player.shield - amt);
-            } else {
-                player.health = Math.max(0, player.health - amt);
-            }
-            document.getElementById('shield-bar').style.width = player.shield + '%';
-            document.getElementById('shield-txt').innerText = Math.floor(player.shield);
-            document.getElementById('health-bar').style.width = player.health + '%';
-            document.getElementById('health-txt').innerText = Math.floor(player.health);
-
-            if(player.health <= 0) endGame(false);
-        }
-
-        // Fortnite Storm Mechanics
-        function startStormTicker() {
-            let timer = setInterval(() => {
+        // Fortnite Storm mechanics tracking script
+        function startStormCountdown() {
+            let ticker = setInterval(() => {
                 if (!gameRunning) return;
-                stormTime--;
-                document.getElementById('timer').innerText = stormTime;
+                matchTimer--;
+                document.getElementById('timer').innerText = matchTimer;
 
-                if (stormTime <= 45) {
-                    stormSize = Math.max(100, stormSize - 15);
-                    let stormEl = document.getElementById('storm');
-                    stormEl.style.width = stormSize + 'px';
-                    stormEl.style.height = stormSize + 'px';
+                // Gradually decrease real-time world diameter
+                if (matchTimer <= 45) {
+                    stormSize3D -= 3.5;
                 }
 
-                if(stormTime <= 0) {
-                    clearInterval(timer);
-                    endGame(false);
+                // Verify if player is outside safe coordinate zones
+                let distanceFromCenter = player.position.distanceTo(new THREE.Vector3(0,0,0));
+                if (distanceFromCenter > stormSize3D) {
+                    end3DMatch(false); // Eliminated by closing boundary
+                    clearInterval(ticker);
+                }
+
+                if (matchTimer <= 0) {
+                    clearInterval(ticker);
+                    end3DMatch(false);
                 }
             }, 1000);
         }
 
-        function checkStormContainment() {
-            let cx = player.x - 500;
-            let cy = player.y - 350;
-            if(Math.hypot(cx, cy) > stormSize / 2) {
-                damagePlayer(0.4); // Constant storm damage tick
-            }
-        }
-
-        function endGame(victory) {
+        function end3DMatch(victory) {
             gameRunning = false;
-            let scr = document.getElementById('game-over-screen');
-            let title = document.getElementById('end-title');
-            let msg = document.getElementById('end-msg');
+            document.exitPointerLock();
+            
+            let panel = document.getElementById('game-over-screen');
+            let banner = document.getElementById('end-title');
+            let info = document.getElementById('end-msg');
 
-            if(victory) {
-                title.innerText = "🏆 VICTORY ROYALE";
-                title.style.color = "#fbf034";
-                msg.innerText = "Incredible! You cycled through all 5 weapon tiers using pure keyboard power!";
+            if (victory) {
+                banner.innerText = "🏆 VICTORY ROYALE";
+                banner.style.color = "#fbf034";
+                info.innerText = "Incredible! You navigated the 3D battle map and successfully dominated every weapon tier progression!";
             } else {
-                title.innerText = "ELIMINATED IN THE LOOP";
-                title.style.color = "#ff0055";
-                msg.innerText = "You ran out of health or were consumed by the shrinking storm circle.";
+                banner.innerText = "ELIMINATED BY STORM";
+                banner.style.color = "#ff0055";
+                info.innerText = "You ran out of match duration or became completely trapped outside the safety circle wall.";
             }
-            scr.style.display = 'flex';
+            panel.style.display = 'flex';
         }
-    </script>
+    </style>
 </body>
 </html>
