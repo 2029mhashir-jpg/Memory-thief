@@ -11,8 +11,9 @@
             width: 100%;
             text-align: center;
             color: #fff;
-            pointer-events: none; /* Let clicks pass through to the game */
+            pointer-events: none;
             text-shadow: 2px 2px 4px #000;
+            z-index: 10;
         }
         h1 { margin: 0 0 5px 0; font-size: 28px; letter-spacing: 2px; }
         p { margin: 0; font-size: 16px; color: #00ffcc; }
@@ -23,159 +24,74 @@
 <body>
 
     <div id="ui-layer">
-        <h1>MEMORY THIEF: 3D BATTLE ARENA</h1>
-        <p>Use <b>W, A, S, D</b> or <b>Arrow Keys</b> to run around the map!</p>
+        <h1>MEMORY THIEF</h1>
+        <p>Battle Royale Edition</p>
     </div>
 
     <script>
-        // --- 1. SETUP THE 3D WORLD ---
+        // 1. Setup Scene, Camera, and Renderer
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x1a1a2e);
-        scene.fog = new THREE.FogExp2(0x1a1a2e, 0.015); // Add atmospheric fog like Fortnite
+        scene.background = new THREE.Color(0xa0a0a0);
+        scene.fog = new THREE.FogExp2(0xa0a0a0, 0.015);
 
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 5, 10); // Position camera slightly up and back
+
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
         document.body.appendChild(renderer.domElement);
 
-        // --- 2. ADD LIGHTING ---
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-        scene.add(ambientLight);
+        // 2. Add Lighting
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.4);
+        hemiLight.position.set(0, 20, 0);
+        scene.add(hemiLight);
 
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(20, 40, 20);
+        dirLight.position.set(10, 20, 10);
         dirLight.castShadow = true;
         scene.add(dirLight);
 
-        // --- 3. CREATE THE BATTLEGROUND FLOOR ---
-        const floorGeo = new THREE.PlaneGeometry(100, 100);
-        const floorMat = new THREE.MeshStandardMaterial({ color: 0x222831, roughness: 0.8 });
+        // 3. Add Environment (Ground Plane)
+        const floorGeo = new THREE.PlaneGeometry(1000, 1000);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x557a46, roughness: 0.8 });
         const floor = new THREE.Mesh(floorGeo, floorMat);
         floor.rotation.x = -Math.PI / 2;
         floor.receiveShadow = true;
         scene.add(floor);
 
-        // Add a grid system to look like a digital arena map
-        const grid = new THREE.GridHelper(100, 50, 0x00ffcc, 0x444444);
-        grid.position.y = 0.01;
+        // Add a visual grid for depth perception
+        const grid = new THREE.GridHelper(1000, 100, 0x000000, 0x000000);
+        grid.material.opacity = 0.2;
+        grid.material.transparent = true;
         scene.add(grid);
 
-        // --- 4. CREATE A 3D PLAYER CHARACTER ---
-        // Instead of a block, we build a compound hierarchical robot character model
-        const playerGroup = new THREE.Group();
+        // 4. Add a Target Placeholder (Example Obstacle)
+        const boxGeo = new THREE.BoxGeometry(2, 4, 2);
+        const boxMat = new THREE.MeshStandardMaterial({ color: 0xff0055 });
+        const box = new THREE.Mesh(boxGeo, boxMat);
+        box.position.set(0, 2, -10);
+        box.castShadow = true;
+        scene.add(box);
 
-        // Robot Body/Torso
-        const torsoGeo = new THREE.BoxGeometry(1.2, 1.5, 0.8);
-        const torsoMat = new THREE.MeshStandardMaterial({ color: 0x3f72af, metalness: 0.5, roughness: 0.2 });
-        const torso = new THREE.Mesh(torsoGeo, torsoMat);
-        torso.position.y = 1.65;
-        torso.castShadow = true;
-        playerGroup.add(torso);
-
-        // Robot Head
-        const headGeo = new THREE.BoxGeometry(0.8, 0.8, 0.8);
-        const headMat = new THREE.MeshStandardMaterial({ color: 0xdff6ff, metalness: 0.8 });
-        const head = new THREE.Mesh(headGeo, headMat);
-        head.position.y = 2.5;
-        head.castShadow = true;
-        playerGroup.add(head);
-
-        // Glowing Visor / Eyes
-        const visorGeo = new THREE.BoxGeometry(0.6, 0.15, 0.1);
-        const visorMat = new THREE.MeshBasicMaterial({ color: 0x38ef7d });
-        const visor = new THREE.Mesh(visorGeo, visorMat);
-        visor.position.set(0, 2.5, 0.41);
-        playerGroup.add(visor);
-
-        // Left Leg
-        const legGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.9);
-        const legMat = new THREE.MeshStandardMaterial({ color: 0x112d4e });
-        const leftLeg = new THREE.Mesh(legGeo, legMat);
-        leftLeg.position.set(-0.35, 0.45, 0);
-        leftLeg.castShadow = true;
-        playerGroup.add(leftLeg);
-
-        // Right Leg
-        const rightLeg = leftLeg.clone();
-        rightLeg.position.x = 0.35;
-        playerGroup.add(rightLeg);
-
-        playerGroup.position.set(0, 0, 0);
-        scene.add(playerGroup);
-
-        // --- 5. CREATE MAP INTERACTIBLES (3D CHESTS/OBJECTS) ---
-        const chestGeo = new THREE.BoxGeometry(2, 1.5, 1.5);
-        const chestMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.6 }); // Golden loot box style
-        const lootChest = new THREE.Mesh(chestGeo, chestMat);
-        lootChest.position.set(5, 0.75, -10);
-        lootChest.castShadow = true;
-        scene.add(lootChest);
-
-        // --- 6. MOVEMENT CONTROLS LOGIC ---
-        const keys = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
-        
-        window.addEventListener('keydown', (e) => { if(e.key in keys) keys[e.key] = true; });
-        window.addEventListener('keyup', (e) => { if(e.key in keys) keys[e.key] = false; });
-
-        const moveSpeed = 0.15;
-        let legCounter = 0;
-
-        // --- 7. THE MAIN 3D RENDERING LOOP ---
-        function animate() {
-            requestAnimationFrame(animate);
-
-            let moving = false;
-            let moveX = 0;
-            let moveZ = 0;
-
-            // Calculate movement vectors
-            if (keys.w || keys.ArrowUp) { moveZ = -moveSpeed; moving = true; }
-            if (keys.s || keys.ArrowDown) { moveZ = moveSpeed; moving = true; }
-            if (keys.a || keys.ArrowLeft) { moveX = -moveSpeed; moving = true; }
-            if (keys.d || keys.ArrowRight) { moveX = moveSpeed; moving = true; }
-
-            if (moving) {
-                // Move character position coordinates
-                playerGroup.position.x += moveX;
-                playerGroup.position.z += moveZ;
-
-                // Make the character face the direction they are running
-                const angle = Math.atan2(moveX, moveZ);
-                playerGroup.rotation.y = angle;
-
-                // Animate character legs swinging back and forth while running
-                legCounter += 0.2;
-                leftLeg.rotation.x = Math.sin(legCounter) * 0.5;
-                rightLeg.rotation.x = -Math.sin(legCounter) * 0.5;
-            } else {
-                // Reset legs to straight position when standing still
-                leftLeg.rotation.x = 0;
-                rightLeg.rotation.x = 0;
-            }
-
-            // --- THIRD-PERSON CAMERA RIG ---
-            // The camera tracks behind the player dynamically, just like Fortnite
-            camera.position.x = playerGroup.position.x;
-            camera.position.y = playerGroup.position.y + 6;  // Look down from slightly above
-            camera.position.z = playerGroup.position.z + 12; // Stay safely behind character
-            camera.lookAt(playerGroup.position);
-
-            // Spin the golden loot chest slowly in place
-            lootChest.rotation.y += 0.01;
-
-            renderer.render(scene, camera);
-        }
-
-        // Run the 3D loop engine
-        animate();
-
-        // Keep game scaled correctly if window is resized
-        window.addEventListener('resize', () => {
+        // 5. Handle Window Resizing
+        window.addEventListener('resize', onWindowResize, false);
+        function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+        }
+
+        // 6. Game Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Rotate the obstacle cube slightly just to show life in the scene
+            box.rotation.y += 0.01;
+
+            renderer.render(scene, camera);
+        }
+        animate();
     </script>
 </body>
 </html>
