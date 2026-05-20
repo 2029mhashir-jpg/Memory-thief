@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Memory Thief: 3D Battle Royale Edition</title>
+    <title>Memory Thief: Battle Royale Edition</title>
     <style>
         body { 
             margin: 0; 
             padding: 0; 
             overflow: hidden; 
-            background-color: #87CEEB; /* Sky blue background fallback */
-            font-family: sans-serif; 
+            background-color: #1a1a1a; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
         }
         #ui-layer {
             position: absolute;
@@ -21,8 +21,8 @@
             text-shadow: 2px 2px 4px #000;
             z-index: 10;
         }
-        h1 { margin: 0 0 5px 0; font-size: 28px; letter-spacing: 2px; }
-        p { margin: 0; font-size: 16px; color: #00ffcc; }
+        h1 { margin: 0 0 5px 0; font-size: 32px; letter-spacing: 3px; color: #fff; }
+        p { margin: 0; font-size: 16px; color: #00ffcc; font-weight: bold; }
         canvas {
             display: block;
             width: 100vw;
@@ -34,17 +34,15 @@
 
     <div id="ui-layer">
         <h1>MEMORY THIEF</h1>
-        <p>Use WASD to move around the map</p>
+        <p>Use WASD keys to explore the island</p>
     </div>
 
-    <!-- Built-in canvas engine that never fails to load -->
     <canvas id="gameCanvas"></canvas>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // Resize handling
         function resize() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -52,23 +50,26 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // Game State
-        const player = { x: 0, z: 20, speed: 0.5 };
+        // Game Configuration Settings
+        const player = { x: 0, y: 0, size: 24, speed: 5 };
         const keys = { w: false, a: false, s: false, d: false };
 
-        // Generate random buildings across the map
-        const buildings = [];
-        for (let i = 0; i < 40; i++) {
-            buildings.push({
-                x: (Math.random() - 0.5) * 200,
-                z: (Math.random() - 0.5) * 200,
-                width: 6,
-                height: Math.random() * 30 + 10,
-                color: '#555555'
+        // Build a massive persistent game map environment matrix
+        const mapSize = 2000; 
+        const obstacles = [];
+        
+        // Populate the map with buildings and environmental crates
+        for (let i = 0; i < 60; i++) {
+            obstacles.push({
+                x: (Math.random() - 0.5) * mapSize,
+                y: (Math.random() - 0.5) * mapSize,
+                w: Math.random() * 60 + 40,
+                h: Math.random() * 60 + 40,
+                color: '#4e5d6c'
             });
         }
 
-        // Input Listeners
+        // Capture user keyboard inputs cleanly
         window.addEventListener('keydown', (e) => {
             const key = e.key.toLowerCase();
             if (key in keys) keys[key] = true;
@@ -78,89 +79,69 @@
             if (key in keys) keys[key] = false;
         });
 
-        // Projection math to convert 3D coordinates into 2D screen positions
-        function project(x, y, z) {
-            const camX = x - player.x;
-            const camZ = z - player.z;
-            const fov = 400; // Camera perspective distance
-            
-            if (camZ <= 0.1) return null; // Behind camera view
-
-            const scale = fov / camZ;
-            return {
-                x: canvas.width / 2 + camX * scale,
-                y: canvas.height / 2 - (y * scale),
-                scale: scale
-            };
-        }
-
-        // Main Engine Loop
+        // Main Execution Rendering Cycle Loop
         function loop() {
-            // 1. Handle Movement Math
-            if (keys.w) player.z -= player.speed;
-            if (keys.s) player.z += player.speed;
+            // Apply positional velocity adjustments 
+            if (keys.w) player.y -= player.speed;
+            if (keys.s) player.y += player.speed;
             if (keys.a) player.x -= player.speed;
             if (keys.d) player.x += player.speed;
 
-            // 2. Clear Frame & Draw Sky
-            ctx.fillStyle = '#87CEEB';
+            // Enforce hard border boundary map collision blocks
+            const halfMap = mapSize / 2;
+            if (player.x < -halfMap) player.x = -halfMap;
+            if (player.x > halfMap) player.x = halfMap;
+            if (player.y < -halfMap) player.y = -halfMap;
+            if (player.y > halfMap) player.y = halfMap;
+
+            // Camera transformation offsets centering viewport to player character
+            const camX = canvas.width / 2 - player.x;
+            const camY = canvas.height / 2 - player.y;
+
+            // Wipe screen clear and paint default backdrop canvas grid
+            ctx.fillStyle = '#1e251c'; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 3. Draw Ground
-            ctx.fillStyle = '#2E7D32';
-            ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
+            ctx.save();
+            ctx.translate(camX, camY);
 
-            // 4. Sort objects by depth so further objects render behind closer objects
-            const renderedObjects = [];
+            // Render the massive green grass grass field sector layout
+            ctx.fillStyle = '#3c5a32';
+            ctx.fillRect(-halfMap, -halfMap, mapSize, mapSize);
 
-            // Project buildings into the list
-            buildings.forEach(b => {
-                const pBottomLeft = project(b.x - b.width/2, 0, b.z);
-                const pTopRight = project(b.x + b.width/2, b.height, b.z);
-                
-                if (pBottomLeft && pTopRight) {
-                    const depth = b.z - player.z;
-                    if (depth > 0) {
-                        renderedObjects.push({
-                            depth: depth,
-                            draw: () => {
-                                ctx.fillStyle = b.color;
-                                const w = pTopRight.x - pBottomLeft.x;
-                                const h = pBottomLeft.y - pTopRight.y;
-                                ctx.fillRect(pBottomLeft.x, pTopRight.y, w, h);
-                                
-                                // Add details/windows outline
-                                ctx.strokeStyle = '#333';
-                                ctx.lineWidth = 2;
-                                ctx.strokeRect(pBottomLeft.x, pTopRight.y, w, h);
-                            }
-                        });
-                    }
-                }
-            });
-
-            // Project Player Character Box (always right in front of camera)
-            const pLoc = project(player.x, 0, player.z + 15);
-            if (pLoc) {
-                renderedObjects.push({
-                    depth: 15,
-                    draw: () => {
-                        ctx.fillStyle = '#D32F2F'; // Red player color
-                        const pWidth = 3 * pLoc.scale;
-                        const pHeight = 6 * pLoc.scale;
-                        ctx.fillRect(canvas.width / 2 - pWidth / 2, canvas.height / 2 + 20, pWidth, pHeight);
-                    }
-                });
+            // Draw clean reference cross gridlines across the island layout 
+            ctx.strokeStyle = '#4d6e41';
+            ctx.lineWidth = 2;
+            for (let x = -halfMap; x <= halfMap; x += 100) {
+                ctx.beginPath(); ctx.moveTo(x, -halfMap); ctx.lineTo(x, halfMap); ctx.stroke();
+            }
+            for (let y = -halfMap; y <= halfMap; y += 100) {
+                ctx.beginPath(); ctx.moveTo(-halfMap, y); ctx.lineTo(halfMap, y); ctx.stroke();
             }
 
-            // Sort by depth (farthest first) and render
-            renderedObjects.sort((a, b) => b.depth - a.depth);
-            renderedObjects.forEach(obj => obj.draw());
+            // Draw structural buildings map layout obstacles
+            obstacles.forEach(obs => {
+                ctx.fillStyle = obs.color;
+                ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+                
+                // Add stylized dark compound structural drop-shadow borders
+                ctx.strokeStyle = '#2b3640';
+                ctx.lineWidth = 4;
+                ctx.strokeRect(obs.x, obs.y, obs.w, obs.h);
+            });
+
+            // Draw Player Character Object Sprite (Red Circle Core)
+            ctx.fillStyle = '#ff4757';
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.size / 2, 0, Math.all ? 0 : Math.PI * 2);
+            ctx.fill();
+            
+            // Outer skin ring armor trim
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            ctx.restore();
 
             requestAnimationFrame(loop);
         }
-
-        loop();
-    </script>
-</body>
-</html>
