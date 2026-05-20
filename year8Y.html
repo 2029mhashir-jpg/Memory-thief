@@ -1,45 +1,129 @@
+<!DOCTYPE html>
 <html>
 <head>
-    <title>Memory Thief</title>
+    <title>Memory Thief: Action Edition</title>
     <style>
-        body { font-family: sans-serif; margin: 40px; line-height: 1.6; }
-        button { margin-right: 10px; padding: 10px; cursor: pointer; }
+        body { 
+            background-color: #111; 
+            color: #fff; 
+            font-family: sans-serif; 
+            text-align: center; 
+            margin-top: 30px; 
+        }
+        canvas { 
+            border: 4px solid #fff; 
+            background-color: #222; 
+            display: block;
+            margin: 20px auto;
+        }
     </style>
 </head>
 <body>
 
-    <h1>Memory Thief: The Text Game</h1>
-    
-    <!-- This ID lets JavaScript update the story text dynamically -->
-    <p id="story-text">You wake up in a dark room. Your memories are completely missing. There is a heavy iron door and a small wooden desk.</p>
+    <h1>Memory Thief</h1>
+    <p>Use your <strong>Arrow Keys</strong> or <strong>WASD</strong> to move around. Walk up to objects to interact!</p>
+    <p id="game-message" style="font-size: 20px; color: #00ff66;">Find a way out of the room...</p>
 
-    <!-- Game Choices -->
-    <div id="choices">
-        <button onclick="examineDoor()">Examine the door</button>
-        <button onclick="searchDesk()">Search the desk</button>
-    </div>
+    <!-- The Canvas acts as our video game screen -->
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
 
     <script>
-        // Game State: Tracks if the player has the key
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const messageText = document.getElementById("game-message");
+
+        // Game State Variables
         let hasKey = false;
+        let gameWon = false;
 
-        function examineDoor() {
-            const story = document.getElementById("story-text");
-            
-            if (hasKey) {
-                story.innerHTML = "You use the rusty key on the heavy iron door. It creaks open! You escape the dark room. <strong>You win!</strong>";
-                document.getElementById("choices").style.display = "none"; // Hide buttons on win
-            } else {
-                story.innerText = "The door is locked tight. You need a key to open it.";
+        // 1. Player Character Object
+        const player = {
+            x: 100,
+            y: 200,
+            size: 20,
+            speed: 4,
+            color: "#0099ff" // Blue block for player
+        };
+
+        // 2. Map Objects (Desks, Doors)
+        const desk = { x: 450, y: 100, width: 60, height: 60, color: "#8B4513", searched: false };
+        const door = { x: 550, y: 180, width: 20, height: 60, color: "#808080" };
+
+        // 3. Track Keyboard Input
+        const keys = {};
+        window.addEventListener("keydown", (e) => keys[e.key] = true);
+        window.addEventListener("keyup", (e) => keys[e.key] = false);
+
+        // 4. Simple Collision Detection Helper
+        function checkCollision(rect1, rect2) {
+            return rect1.x < rect2.x + rect2.width &&
+                   rect1.x + rect1.size > rect2.x &&
+                   rect1.y < rect2.y + rect2.height &&
+                   rect1.y + rect1.size > rect2.y;
+        }
+
+        // 5. The Main Game Loop (Runs 60 times a second to handle action)
+        function gameLoop() {
+            if (gameWon) return; // Stop the game if player wins
+
+            // Move Player based on buttons pressed
+            if (keys["ArrowUp"] || keys["w"]) player.y -= player.speed;
+            if (keys["ArrowDown"] || keys["s"]) player.y += player.speed;
+            if (keys["ArrowLeft"] || keys["a"]) player.x -= player.speed;
+            if (keys["ArrowRight"] || keys["d"]) player.x += player.speed;
+
+            // Keep player inside the canvas box bounds
+            if (player.x < 0) player.x = 0;
+            if (player.y < 0) player.y = 0;
+            if (player.x > canvas.width - player.size) player.x = canvas.width - player.size;
+            if (player.y > canvas.height - player.size) player.y = canvas.height - player.size;
+
+            // Check Actions & Collisions
+            // Check Desk Collision
+            if (checkCollision(player, desk)) {
+                if (!hasKey) {
+                    hasKey = true;
+                    messageText.innerText = "You searched the wooden desk and found a Rusty Key! Now go to the iron door.";
+                    desk.color = "#a05a2c"; // Light up desk to show it's searched
+                }
             }
+
+            // Check Door Collision
+            if (checkCollision(player, door)) {
+                if (hasKey) {
+                    gameWon = true;
+                    messageText.innerHTML = "<strong>You unlocked the iron door and escaped! YOU WIN!</strong>";
+                    door.color = "#00ff66"; // Turn door green on win
+                } else {
+                    messageText.innerText = "The iron door is locked tight. Find a key first.";
+                }
+            }
+
+            // CLEAR SCREEN & REDRAW FRAME
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Desk
+            ctx.fillStyle = desk.color;
+            ctx.fillRect(desk.x, desk.y, desk.width, desk.height);
+            ctx.fillStyle = "#fff";
+            ctx.fillText("DESK", desk.x + 12, desk.y + 35);
+
+            // Draw Door
+            ctx.fillStyle = door.color;
+            ctx.fillRect(door.x, door.y, door.width, door.height);
+            ctx.fillStyle = "#fff";
+            ctx.fillText("DOOR", door.x - 35, door.y + 35);
+
+            // Draw Player
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, player.size, player.size);
+
+            // Call the loop again for the next frame
+            requestAnimationFrame(gameLoop);
         }
 
-        function searchDesk() {
-            const story = document.getElementById("story-text");
-            hasKey = true; // Updates the game state
-            story.innerText = "You search the desk, open the drawer, and find a rusty key!";
-        }
+        // Start the action game engine
+        gameLoop();
     </script>
-
 </body>
 </html>
