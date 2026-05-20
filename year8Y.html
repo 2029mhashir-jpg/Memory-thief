@@ -14,14 +14,13 @@
             user-select: none;
         }
 
-        /* 3D Game Canvas viewport */
         #gameCanvas {
             width: 100vw;
             height: 100vh;
             display: block;
         }
 
-        /* Fortnite-style Crosshair overlay */
+        /* Fortnite-style Crosshair */
         #crosshair {
             position: absolute;
             top: 50%;
@@ -30,6 +29,7 @@
             height: 10px;
             transform: translate(-50%, -50%);
             pointer-events: none;
+            z-index: 5;
         }
         #crosshair::before, #crosshair::after {
             content: '';
@@ -39,7 +39,7 @@
         #crosshair::before { top: 4px; left: -5px; width: 20px; height: 2px; }
         #crosshair::after { top: -5px; left: 4px; width: 2px; height: 20px; }
 
-        /* Simple HUD overlay for Health and Ammo */
+        /* HUD overlay */
         #hud {
             position: absolute;
             bottom: 20px;
@@ -52,14 +52,15 @@
             font-size: 24px;
             font-weight: bold;
             letter-spacing: 1px;
+            z-index: 5;
         }
 
-        /* Click to Play screen overlay */
+        /* Start screen overlay */
         #blocker {
             position: absolute;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.7);
+            background-color: rgba(0,0,0,0.85);
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -73,32 +74,156 @@
             font-size: 28px;
             text-transform: uppercase;
             color: #f7a205;
+            line-height: 1.6;
         }
     </style>
-    <!-- Load Three.js Library via CDN -->
+    <!-- Load Three.js 3D Engine -->
     <script src="https://cloudflare.com"></script>
 </head>
 <body>
 
-    <!-- Start Screen (Required for Mouse Lock Controls) -->
     <div id="blocker">
         <div id="instructions">
             <strong>Click to Play</strong><br><br>
             W, A, S, D = Move<br>
             MOUSE = Look Around<br>
-            CLICK = Shoot
+            CLICK = Shoot<br><br>
+            <span style="font-size: 18px; color: #aaa;">Press ESC to pause</span>
         </div>
     </div>
 
-    <!-- UI Overlays -->
     <div id="crosshair"></div>
     <div id="hud">HP: 100 | AMMO: 30</div>
-
-    <!-- The 3D Game World Container -->
     <div id="gameCanvas"></div>
 
-    <!-- Link your local 3D game logic file here -->
-    <script src="game.js"></script>
+    <script>
+        // --- 1. SETUP 3D ENGINE ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x7dd2f3); // Sky Blue
 
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('gameCanvas').appendChild(renderer.domElement);
+
+        // --- 2. LIGHTING ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        sunLight.position.set(10, 20, 10);
+        scene.add(sunLight);
+
+        // --- 3. CREATE MAP (Grass and Obstacles) ---
+        const floorGeo = new THREE.PlaneGeometry(200, 200);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x2e8b57 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        scene.add(floor);
+
+        // Spawn targets to shoot
+        const targets = [];
+        for (let i = 0; i < 15; i++) {
+            const boxGeo = new THREE.BoxGeometry(2, 5, 2);
+            const boxMat = new THREE.MeshStandardMaterial({ color: 0xff3333 });
+            const target = new THREE.Mesh(boxGeo, boxMat);
+            target.position.set((Math.random() - 0.5) * 80, 2.5, (Math.random() - 0.5) * 80);
+            scene.add(target);
+            targets.push(target);
+        }
+
+        // --- 4. ENGINE CONTROLS CONFIG ---
+        camera.position.set(0, 2, 0); 
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        const speed = 0.2;
+        let yaw = 0, pitch = 0;
+
+        // --- 5. MENU & MOUSE LOCK MECHANISM ---
+        const blocker = document.getElementById('blocker');
+
+        blocker.addEventListener('click', () => {
+            document.body.requestPointerLock();
+        });
+
+        document.addEventListener('pointerlockchange', () => {
+            if (document.pointerLockElement === document.body) {
+                blocker.style.display = 'none';
+            } else {
+                blocker.style.display = 'flex';
+            }
+        });
+
+        // --- 6. MOVEMENT AND AIMING CONTROLS ---
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'KeyW') moveForward = true;
+            if (e.code === 'KeyS') moveBackward = true;
+            if (e.code === 'KeyA') moveLeft = true;
+            if (e.code === 'KeyD') moveRight = true;
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'KeyW') moveForward = false;
+            if (e.code === 'KeyS') moveBackward = false;
+            if (e.code === 'KeyA') moveLeft = false;
+            if (e.code === 'KeyD') moveRight = false;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (document.pointerLockElement !== document.body) return;
+
+            yaw -= e.movementX * 0.0025;
+            pitch -= e.movementY * 0.0025;
+            pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
+
+            camera.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
+        });
+
+        // Shooting logic (Clicking the screen)
+        window.addEventListener('click', () => {
+            if (document.pointerLockElement !== document.body) return;
+            
+            // Simple Raycaster to check if you hit a target box
+            const raycaster = new THREE.Raycaster();
+            const center = new THREE.Vector2(0, 0); // Center of target crosshair
+            raycaster.setFromCamera(center, camera);
+            
+            const intersects = raycaster.intersectObjects(targets);
+            if (intersects.length > 0) {
+                const hitTarget = intersects[0].object;
+                // Make hit target change color or flash yellow
+                hitTarget.material.color.setHex(0xffffff);
+                setTimeout(() => hitTarget.material.color.setHex(0xff3333), 100);
+            }
+        });
+
+        // --- 7. MAIN RENDER LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (document.pointerLockElement === document.body) {
+                const forwardVec = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+                forwardVec.y = 0;
+                forwardVec.normalize();
+
+                const rightVec = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+                rightVec.y = 0;
+                rightVec.normalize();
+
+                if (moveForward) camera.position.addScaledVector(forwardVec, speed);
+                if (moveBackward) camera.position.addScaledVector(forwardVec, -speed);
+                if (moveRight) camera.position.addScaledVector(rightVec, speed);
+                if (moveLeft) camera.position.addScaledVector(rightVec, -speed);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
 </body>
 </html>
