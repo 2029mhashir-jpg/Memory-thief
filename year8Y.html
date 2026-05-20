@@ -8,7 +8,7 @@
             margin: 0; 
             padding: 0; 
             overflow: hidden; 
-            background-color: #000; 
+            background-color: #87CEEB; /* Sky blue background fallback */
             font-family: sans-serif; 
         }
         #ui-layer {
@@ -23,9 +23,12 @@
         }
         h1 { margin: 0 0 5px 0; font-size: 28px; letter-spacing: 2px; }
         p { margin: 0; font-size: 16px; color: #00ffcc; }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
     </style>
-    <!-- Stable, direct CDN link that requires no module mappings -->
-    <script src="https://jsdelivr.net"></script>
 </head>
 <body>
 
@@ -34,107 +37,130 @@
         <p>Use WASD to move around the map</p>
     </div>
 
+    <!-- Built-in canvas engine that never fails to load -->
+    <canvas id="gameCanvas"></canvas>
+
     <script>
-        // Check if the library loaded correctly
-        if (typeof THREE === 'undefined') {
-            document.getElementById('ui-layer').innerHTML = "<h1>Error loading game engine. Check internet connection.</h1>";
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Resize handling
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Game State
+        const player = { x: 0, z: 20, speed: 0.5 };
+        const keys = { w: false, a: false, s: false, d: false };
+
+        // Generate random buildings across the map
+        const buildings = [];
+        for (let i = 0; i < 40; i++) {
+            buildings.push({
+                x: (Math.random() - 0.5) * 200,
+                z: (Math.random() - 0.5) * 200,
+                width: 6,
+                height: Math.random() * 30 + 10,
+                color: '#555555'
+            });
         }
 
-        let scene, camera, renderer, player;
-        const keys = { w: false, a: false, s: false, d: false };
-        const moveSpeed = 0.3;
+        // Input Listeners
+        window.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if (key in keys) keys[key] = true;
+        });
+        window.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (key in keys) keys[key] = false;
+        });
 
-        function init() {
-            // Create the 3D scene
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87ceeb); // Light blue sky
-
-            // Setup camera
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        // Projection math to convert 3D coordinates into 2D screen positions
+        function project(x, y, z) {
+            const camX = x - player.x;
+            const camZ = z - player.z;
+            const fov = 400; // Camera perspective distance
             
-            // Setup renderer
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            document.body.appendChild(renderer.domElement);
+            if (camZ <= 0.1) return null; // Behind camera view
 
-            // Add lighting so objects are visible
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-            scene.add(ambientLight);
-            
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            dirLight.position.set(20, 40, 20);
-            scene.add(dirLight);
+            const scale = fov / camZ;
+            return {
+                x: canvas.width / 2 + camX * scale,
+                y: canvas.height / 2 - (y * scale),
+                scale: scale
+            };
+        }
 
-            // Create green ground grid
-            const floorGeo = new THREE.PlaneGeometry(500, 500);
-            const floorMat = new THREE.MeshStandardMaterial({ color: 0x2e7d32 });
-            const floor = new THREE.Mesh(floorGeo, floorMat);
-            floor.rotation.x = -Math.PI / 2; // Lay flat
-            scene.add(floor);
+        // Main Engine Loop
+        function loop() {
+            // 1. Handle Movement Math
+            if (keys.w) player.z -= player.speed;
+            if (keys.s) player.z += player.speed;
+            if (keys.a) player.x -= player.speed;
+            if (keys.d) player.x += player.speed;
 
-            // Create a simple red player box (placeholder character)
-            const playerGeo = new THREE.BoxGeometry(2, 4, 2);
-            const playerMat = new THREE.MeshStandardMaterial({ color: 0xd32f2f });
-            player = new THREE.Mesh(playerGeo, playerMat);
-            player.position.y = 2; // Sit on top of floor
-            scene.add(player);
+            // 2. Clear Frame & Draw Sky
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Add a few test buildings/obstacles to see movement tracking
-            for (let i = 0; i < 15; i++) {
-                const boxGeo = new THREE.BoxGeometry(4, Math.random() * 15 + 5, 4);
-                const boxMat = new THREE.MeshStandardMaterial({ color: 0x757575 });
-                const obstacle = new THREE.Mesh(boxGeo, boxMat);
-                obstacle.position.set(
-                    (Math.random() - 0.5) * 100,
-                    boxGeo.parameters.height / 2,
-                    (Math.random() - 0.5) * 100
-                );
-                scene.add(obstacle);
+            // 3. Draw Ground
+            ctx.fillStyle = '#2E7D32';
+            ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
+
+            // 4. Sort objects by depth so further objects render behind closer objects
+            const renderedObjects = [];
+
+            // Project buildings into the list
+            buildings.forEach(b => {
+                const pBottomLeft = project(b.x - b.width/2, 0, b.z);
+                const pTopRight = project(b.x + b.width/2, b.height, b.z);
+                
+                if (pBottomLeft && pTopRight) {
+                    const depth = b.z - player.z;
+                    if (depth > 0) {
+                        renderedObjects.push({
+                            depth: depth,
+                            draw: () => {
+                                ctx.fillStyle = b.color;
+                                const w = pTopRight.x - pBottomLeft.x;
+                                const h = pBottomLeft.y - pTopRight.y;
+                                ctx.fillRect(pBottomLeft.x, pTopRight.y, w, h);
+                                
+                                // Add details/windows outline
+                                ctx.strokeStyle = '#333';
+                                ctx.lineWidth = 2;
+                                ctx.strokeRect(pBottomLeft.x, pTopRight.y, w, h);
+                            }
+                        });
+                    }
+                }
+            });
+
+            // Project Player Character Box (always right in front of camera)
+            const pLoc = project(player.x, 0, player.z + 15);
+            if (pLoc) {
+                renderedObjects.push({
+                    depth: 15,
+                    draw: () => {
+                        ctx.fillStyle = '#D32F2F'; // Red player color
+                        const pWidth = 3 * pLoc.scale;
+                        const pHeight = 6 * pLoc.scale;
+                        ctx.fillRect(canvas.width / 2 - pWidth / 2, canvas.height / 2 + 20, pWidth, pHeight);
+                    }
+                });
             }
 
-            // Camera offset distance behind player
-            camera.position.set(0, 12, 25);
+            // Sort by depth (farthest first) and render
+            renderedObjects.sort((a, b) => b.depth - a.depth);
+            renderedObjects.forEach(obj => obj.draw());
 
-            // Setup controls
-            window.addEventListener('keydown', (e) => handleInput(e, true));
-            window.addEventListener('keyup', (e) => handleInput(e, false));
-            window.addEventListener('resize', onWindowResize);
-
-            animate();
+            requestAnimationFrame(loop);
         }
 
-        function handleInput(event, isPressed) {
-            const key = event.key.toLowerCase();
-            if (key === 'w') keys.w = isPressed;
-            if (key === 'a') keys.a = isPressed;
-            if (key === 's') keys.s = isPressed;
-            if (key === 'd') keys.d = isPressed;
-        }
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-
-            // Run character movement math
-            if (keys.w) player.position.z -= moveSpeed;
-            if (keys.s) player.position.z += moveSpeed;
-            if (keys.a) player.position.x -= moveSpeed;
-            if (keys.d) player.position.x += moveSpeed;
-
-            // Smoothly snap camera look target to player position
-            camera.position.x = player.position.x;
-            camera.position.z = player.position.z + 25;
-            camera.lookAt(player.player ? player.position : new THREE.Vector3(player.position.x, player.position.y + 2, player.position.z));
-
-            renderer.render(scene, camera);
-        }
-
-        window.onload = init;
+        loop();
     </script>
 </body>
 </html>
