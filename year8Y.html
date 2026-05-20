@@ -2,65 +2,170 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Memory Thief: Battle Royale</title>
+    <title>Memory Thief: Battle Royale Gun Game</title>
     <style>
-        body { margin: 0; padding: 0; overflow: hidden; background-color: #1a1a1a; font-family: sans-serif; }
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #1a1a1a; font-family: sans-serif; cursor: crosshair; }
         #ui-layer { position: absolute; top: 20px; width: 100%; text-align: center; color: #fff; pointer-events: none; text-shadow: 2px 2px 4px #000; z-index: 10; }
         h1 { margin: 0; font-size: 32px; letter-spacing: 3px; }
         p { margin: 5px 0 0 0; font-size: 16px; color: #00ffcc; font-weight: bold; }
+        #inventory { position: absolute; bottom: 20px; right: 20px; color: #fff; background: rgba(0,0,0,0.6); padding: 10px 20px; border-radius: 5px; border: 2px solid #00ffcc; font-family: monospace; font-size: 18px; z-index: 10; }
         canvas { display: block; width: 100vw; height: 100vh; }
     </style>
 </head>
 <body>
     <div id="ui-layer">
         <h1>MEMORY THIEF</h1>
-        <p>Use WASD keys to move around the island map</p>
+        <p>WASD to Move | AIM with Mouse | LEFT-CLICK to Shoot | Walk over guns to pick them up</p>
     </div>
+    <div id="inventory">WEAPON: Pistol (Infinite Ammo)</div>
     <canvas id="gameCanvas"></canvas>
+
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
         window.addEventListener('resize', resize); resize();
 
-        const player = { x: 0, y: 0, size: 24, speed: 5 };
+        // Player Stats
+        const player = { x: 0, y: 0, size: 24, speed: 4, angle: 0, weapon: 'Pistol' };
         const keys = { w: false, a: false, s: false, d: false };
-        const mapSize = 2000; const obstacles = [];
-        
-        for (let i = 0; i < 60; i++) {
+        const mouse = { x: 0, y: 0 };
+        const mapSize = 2000;
+
+        // Arrays for Game Objects
+        const obstacles = [];
+        const bullets = [];
+        const items = [];
+        const enemies = [];
+
+        // Spawn grey buildings
+        for (let i = 0; i < 40; i++) {
             obstacles.push({
                 x: (Math.random() - 0.5) * mapSize, y: (Math.random() - 0.5) * mapSize,
-                w: Math.random() * 60 + 40, h: Math.random() * 60 + 40, color: '#4e5d6c'
+                w: Math.random() * 80 + 50, h: Math.random() * 80 + 50
             });
         }
 
+        // Spawn weapons on the ground (Gold circles like Fortnite loot)
+        const weaponTypes = ['Assault Rifle', 'Shotgun', 'Sniper'];
+        for (let i = 0; i < 15; i++) {
+            items.push({
+                x: (Math.random() - 0.5) * (mapSize - 200),
+                y: (Math.random() - 0.5) * (mapSize - 200),
+                type: weaponTypes[Math.floor(Math.random() * weaponTypes.length)],
+                size: 15
+            });
+        }
+
+        // Spawn target dummies (Red enemy dots)
+        for (let i = 0; i < 20; i++) {
+            enemies.push({
+                x: (Math.random() - 0.5) * (mapSize - 200),
+                y: (Math.random() - 0.5) * (mapSize - 200),
+                size: 20, health: 100
+            });
+        }
+
+        // Input Trackers
         window.addEventListener('keydown', (e) => { const k = e.key.toLowerCase(); if (k in keys) keys[k] = true; });
         window.addEventListener('keyup', (e) => { const k = e.key.toLowerCase(); if (k in keys) keys[k] = false; });
+        window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+        
+        // Shooting logic on Left Click
+        window.addEventListener('mousedown', (e) => {
+            if (e.button === 0) { // Left click
+                let bSpeed = 12;
+                bullets.push({
+                    x: player.x, y: player.y,
+                    vx: Math.cos(player.angle) * bSpeed,
+                    vy: Math.sin(player.angle) * bSpeed,
+                    size: 4
+                });
+            }
+        });
 
         function loop() {
+            // Movement physics
             if (keys.w) player.y -= player.speed; if (keys.s) player.y += player.speed;
             if (keys.a) player.x -= player.speed; if (keys.d) player.x += player.speed;
 
+            // Map Boundaries
             const halfMap = mapSize / 2;
             if (player.x < -halfMap) player.x = -halfMap; if (player.x > halfMap) player.x = halfMap;
             if (player.y < -halfMap) player.y = -halfMap; if (player.y > halfMap) player.y = halfMap;
 
+            // Calculate aiming angle based on mouse stance relative to center player screen
+            player.angle = Math.atan2(mouse.y - canvas.height / 2, mouse.x - canvas.width / 2);
+
+            // Update Bullets position
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const b = bullets[i]; b.x += b.vx; b.y += b.vy;
+                // Delete bullets out of bounds
+                if (Math.abs(b.x) > halfMap || Math.abs(b.y) > halfMap) { bullets.splice(i, 1); continue; }
+                
+                // Bullet hit enemy detection
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const e = enemies[j];
+                    const dist = Math.hypot(b.x - e.x, b.y - e.y);
+                    if (dist < e.size) {
+                        e.health -= 35; // Deal damage
+                        bullets.splice(i, 1);
+                        if (e.health <= 0) enemies.splice(j, 1); // Kill enemy dummy
+                        break;
+                    }
+                }
+            }
+
+            // Loot pickup detection
+            for (let i = items.length - 1; i >= 0; i--) {
+                const item = items[i];
+                const dist = Math.hypot(player.x - item.x, player.y - item.y);
+                if (dist < player.size / 2 + item.size) {
+                    player.weapon = item.type;
+                    document.getElementById('inventory').innerText = "WEAPON: " + player.weapon;
+                    items.splice(i, 1); // Remove loot from ground
+                }
+            }
+
+            // Clear Screen & Draw Grass Field
             ctx.fillStyle = '#1e251c'; ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.save(); ctx.translate(canvas.width / 2 - player.x, canvas.height / 2 - player.y);
-
             ctx.fillStyle = '#3c5a32'; ctx.fillRect(-halfMap, -halfMap, mapSize, mapSize);
-            ctx.strokeStyle = '#4d6e41'; ctx.lineWidth = 2;
-            for (let x = -halfMap; x <= halfMap; x += 100) { ctx.beginPath(); ctx.moveTo(x, -halfMap); ctx.lineTo(x, halfMap); ctx.stroke(); }
-            for (let y = -halfMap; y <= halfMap; y += 100) { ctx.beginPath(); ctx.moveTo(-halfMap, y); ctx.lineTo(halfMap, y); ctx.stroke(); }
 
-            obstacles.forEach(obs => {
-                ctx.fillStyle = obs.color; ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
-                ctx.strokeStyle = '#2b3640'; ctx.lineWidth = 4; ctx.strokeRect(obs.x, obs.y, obs.w, obs.h);
+            // Draw Loot items (Gold stars/circles)
+            items.forEach(item => {
+                ctx.fillStyle = '#ffdf00'; ctx.beginPath(); ctx.arc(item.x, item.y, item.size, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+                ctx.fillStyle = '#000'; ctx.font = '10px Arial'; ctx.textAlign = 'center'; ctx.fillText('GUN', item.x, item.y + 3);
             });
 
-            ctx.fillStyle = '#ff4757'; ctx.beginPath(); ctx.arc(player.x, player.y, player.size / 2, 0, Math.PI * 2); ctx.fill();
-            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.stroke();
+            // Draw Enemies (Dark Purple bots)
+            enemies.forEach(e => {
+                ctx.fillStyle = '#4a148c'; ctx.beginPath(); ctx.arc(e.x, e.y, e.size, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = '#ff0055'; ctx.lineWidth = 3; ctx.stroke();
+                // Health bar above enemy
+                ctx.fillStyle = '#ff0000'; ctx.fillRect(e.x - 20, e.y - 30, 40, 5);
+                ctx.fillStyle = '#00ff00'; ctx.fillRect(e.x - 20, e.y - 30, (e.health / 100) * 40, 5);
+            });
+
+            // Draw Buildings
+            ctx.fillStyle = '#4e5d6c'; ctx.strokeStyle = '#2b3640'; ctx.lineWidth = 4;
+            obstacles.forEach(obs => { ctx.fillRect(obs.x, obs.y, obs.w, obs.h); ctx.strokeRect(obs.x, obs.y, obs.w, obs.h); });
+
+            // Draw Bullets
+            ctx.fillStyle = '#ffeb3b';
+            bullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2); ctx.fill(); });
+
             ctx.restore();
+
+            // Draw Player at exact screen center
+            ctx.save(); ctx.translate(canvas.width / 2, canvas.height / 2); ctx.rotate(player.angle);
+            ctx.fillStyle = '#ff4757'; ctx.beginPath(); ctx.arc(0, 0, player.size / 2, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.stroke();
+            // Draw Gun barrel pointing towards cursor direction
+            ctx.fillStyle = '#333'; ctx.fillRect(0, -4, 22, 8);
+            ctx.restore();
+
             requestAnimationFrame(loop);
         }
         loop();
