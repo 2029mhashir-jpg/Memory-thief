@@ -24,100 +24,103 @@
         h1 { margin: 0 0 5px 0; font-size: 28px; letter-spacing: 2px; }
         p { margin: 0; font-size: 16px; color: #00ffcc; }
     </style>
-    <!-- Include the Three.js Engine Library -->
-    <script src="https://cloudflare.com"></script>
+    <!-- Fallback Import Maps to ensure the library mounts directly -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com"
+        }
+      }
+    </script>
 </head>
 <body>
 
     <div id="ui-layer">
         <h1>MEMORY THIEF</h1>
-        <p>Use WASD to move around the map</p>
+        <p>Use WASD to move your character around</p>
     </div>
 
-    <script>
-        // Global variables for the game engine
+    <script type="module">
+        import * as THREE from 'three';
+
         let scene, camera, renderer, player;
-        
-        // Tracking keyboard inputs
         const keys = { w: false, a: false, s: false, d: false };
-        const moveSpeed = 0.2;
+        const moveSpeed = 0.3;
 
         function init() {
-            // 1. Create the 3D Scene
+            // Create scene
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87ceeb); // Sky blue background
+            scene.background = new THREE.Color(0x87ceeb); // Light blue sky
 
-            // 2. Set up the Camera
+            // Setup camera
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             
-            // 3. Set up the WebGL Renderer
+            // Setup renderer
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
 
-            // 4. Create the Ground (Green Island Placeholder)
-            const floorGeo = new THREE.PlaneGeometry(200, 200);
-            const floorMat = new THREE.MeshBasicMaterial({ color: 0x228b22, side: THREE.DoubleSide });
+            // Add basic lighting
+            const light = new THREE.DirectionalLight(0xffffff, 1);
+            light.position.set(5, 10, 7).normalize();
+            scene.add(light);
+
+            // Create flat ground
+            const floorGeo = new THREE.PlaneGeometry(500, 500);
+            const floorMat = new THREE.MeshBasicMaterial({ color: 0x3b7a57 });
             const floor = new THREE.Mesh(floorGeo, floorMat);
-            floor.rotation.x = Math.PI / 2; // Lay it flat
+            floor.rotation.x = -Math.PI / 2;
             scene.add(floor);
 
-            // 5. Create the Player (Red Character Placeholder)
+            // Create player box
             const playerGeo = new THREE.BoxGeometry(2, 4, 2);
-            const playerMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const playerMat = new THREE.MeshBasicMaterial({ color: 0xe63946 });
             player = new THREE.Mesh(playerGeo, playerMat);
-            player.position.y = 2; // Raise it up so it stands on the floor
+            player.position.y = 2;
             scene.add(player);
 
-            // Position camera slightly behind and above the player
-            camera.position.set(0, 10, 20);
+            // Position camera behind player
+            camera.position.set(0, 12, 25);
 
-            // Listen for keyboard controls
-            window.addEventListener('keydown', (e) => handleKeyboard(e, true));
-            window.addEventListener('keyup', (e) => handleKeyboard(e, false));
-            
-            // Adjust screen sizes on window resize
+            // Control event listeners
+            window.addEventListener('keydown', (e) => handleInput(e, true));
+            window.addEventListener('keyup', (e) => handleInput(e, false));
             window.addEventListener('resize', onWindowResize);
 
-            // Start the game loop
             animate();
         }
 
-        // Track key states
-        function handleKeyboard(event, isPressed) {
+        function handleInput(event, isPressed) {
             const key = event.key.toLowerCase();
-            if (key === 'w' || key === 'arrowup') keys.w = isPressed;
-            if (key === 'a' || key === 'arrowleft') keys.a = isPressed;
-            if (key === 's' || key === 'arrowdown') keys.s = isPressed;
-            if (key === 'd' || key === 'arrowright') keys.d = isPressed;
+            if (key === 'w') keys.w = isPressed;
+            if (key === 'a') keys.a = isPressed;
+            if (key === 's') keys.s = isPressed;
+            if (key === 'd') keys.d = isPressed;
         }
 
-        // Handle screen resizing smoothly
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        // Infinite rendering frame loop
         function animate() {
             requestAnimationFrame(animate);
 
-            // Move player based on inputs
+            // Handle player movements
             if (keys.w) player.position.z -= moveSpeed;
             if (keys.s) player.position.z += moveSpeed;
             if (keys.a) player.position.x -= moveSpeed;
             if (keys.d) player.position.x += moveSpeed;
 
-            // Make the camera follow the player smoothly
+            // Tie camera tracking to player coordinates
             camera.position.x = player.position.x;
-            camera.position.z = player.position.z + 20;
+            camera.position.z = player.position.z + 25;
             camera.lookAt(player.position);
 
             renderer.render(scene, camera);
         }
 
-        // Start the game once page assets load
         window.onload = init;
     </script>
 </body>
