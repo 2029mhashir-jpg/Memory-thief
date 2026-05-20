@@ -2,146 +2,68 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Memory Thief: Battle Royale Edition</title>
+    <title>Memory Thief: Battle Royale</title>
     <style>
-        body { 
-            margin: 0; 
-            padding: 0; 
-            overflow: hidden; 
-            background-color: #1a1a1a; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-        }
-        #ui-layer {
-            position: absolute;
-            top: 20px;
-            width: 100%;
-            text-align: center;
-            color: #fff;
-            pointer-events: none;
-            text-shadow: 2px 2px 4px #000;
-            z-index: 10;
-        }
-        h1 { margin: 0 0 5px 0; font-size: 32px; letter-spacing: 3px; color: #fff; }
-        p { margin: 0; font-size: 16px; color: #00ffcc; font-weight: bold; }
-        canvas {
-            display: block;
-            width: 100vw;
-            height: 100vh;
-        }
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #1a1a1a; font-family: sans-serif; }
+        #ui-layer { position: absolute; top: 20px; width: 100%; text-align: center; color: #fff; pointer-events: none; text-shadow: 2px 2px 4px #000; z-index: 10; }
+        h1 { margin: 0; font-size: 32px; letter-spacing: 3px; }
+        p { margin: 5px 0 0 0; font-size: 16px; color: #00ffcc; font-weight: bold; }
+        canvas { display: block; width: 100vw; height: 100vh; }
     </style>
 </head>
 <body>
-
     <div id="ui-layer">
         <h1>MEMORY THIEF</h1>
-        <p>Use WASD keys to explore the island</p>
+        <p>Use WASD keys to move around the island map</p>
     </div>
-
     <canvas id="gameCanvas"></canvas>
-
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize); resize();
 
-        function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resize);
-        resize();
-
-        // Game Configuration Settings
         const player = { x: 0, y: 0, size: 24, speed: 5 };
         const keys = { w: false, a: false, s: false, d: false };
-
-        // Build a massive persistent game map environment matrix
-        const mapSize = 2000; 
-        const obstacles = [];
+        const mapSize = 2000; const obstacles = [];
         
-        // Populate the map with buildings and environmental crates
         for (let i = 0; i < 60; i++) {
             obstacles.push({
-                x: (Math.random() - 0.5) * mapSize,
-                y: (Math.random() - 0.5) * mapSize,
-                w: Math.random() * 60 + 40,
-                h: Math.random() * 60 + 40,
-                color: '#4e5d6c'
+                x: (Math.random() - 0.5) * mapSize, y: (Math.random() - 0.5) * mapSize,
+                w: Math.random() * 60 + 40, h: Math.random() * 60 + 40, color: '#4e5d6c'
             });
         }
 
-        // Capture user keyboard inputs cleanly
-        window.addEventListener('keydown', (e) => {
-            const key = e.key.toLowerCase();
-            if (key in keys) keys[key] = true;
-        });
-        window.addEventListener('keyup', (e) => {
-            const key = e.key.toLowerCase();
-            if (key in keys) keys[key] = false;
-        });
+        window.addEventListener('keydown', (e) => { const k = e.key.toLowerCase(); if (k in keys) keys[k] = true; });
+        window.addEventListener('keyup', (e) => { const k = e.key.toLowerCase(); if (k in keys) keys[k] = false; });
 
-        // Main Execution Rendering Cycle Loop
         function loop() {
-            // Apply positional velocity adjustments 
-            if (keys.w) player.y -= player.speed;
-            if (keys.s) player.y += player.speed;
-            if (keys.a) player.x -= player.speed;
-            if (keys.d) player.x += player.speed;
+            if (keys.w) player.y -= player.speed; if (keys.s) player.y += player.speed;
+            if (keys.a) player.x -= player.speed; if (keys.d) player.x += player.speed;
 
-            // Enforce hard border boundary map collision blocks
             const halfMap = mapSize / 2;
-            if (player.x < -halfMap) player.x = -halfMap;
-            if (player.x > halfMap) player.x = halfMap;
-            if (player.y < -halfMap) player.y = -halfMap;
-            if (player.y > halfMap) player.y = halfMap;
+            if (player.x < -halfMap) player.x = -halfMap; if (player.x > halfMap) player.x = halfMap;
+            if (player.y < -halfMap) player.y = -halfMap; if (player.y > halfMap) player.y = halfMap;
 
-            // Camera transformation offsets centering viewport to player character
-            const camX = canvas.width / 2 - player.x;
-            const camY = canvas.height / 2 - player.y;
+            ctx.fillStyle = '#1e251c'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.save(); ctx.translate(canvas.width / 2 - player.x, canvas.height / 2 - player.y);
 
-            // Wipe screen clear and paint default backdrop canvas grid
-            ctx.fillStyle = '#1e251c'; 
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#3c5a32'; ctx.fillRect(-halfMap, -halfMap, mapSize, mapSize);
+            ctx.strokeStyle = '#4d6e41'; ctx.lineWidth = 2;
+            for (let x = -halfMap; x <= halfMap; x += 100) { ctx.beginPath(); ctx.moveTo(x, -halfMap); ctx.lineTo(x, halfMap); ctx.stroke(); }
+            for (let y = -halfMap; y <= halfMap; y += 100) { ctx.beginPath(); ctx.moveTo(-halfMap, y); ctx.lineTo(halfMap, y); ctx.stroke(); }
 
-            ctx.save();
-            ctx.translate(camX, camY);
-
-            // Render the massive green grass grass field sector layout
-            ctx.fillStyle = '#3c5a32';
-            ctx.fillRect(-halfMap, -halfMap, mapSize, mapSize);
-
-            // Draw clean reference cross gridlines across the island layout 
-            ctx.strokeStyle = '#4d6e41';
-            ctx.lineWidth = 2;
-            for (let x = -halfMap; x <= halfMap; x += 100) {
-                ctx.beginPath(); ctx.moveTo(x, -halfMap); ctx.lineTo(x, halfMap); ctx.stroke();
-            }
-            for (let y = -halfMap; y <= halfMap; y += 100) {
-                ctx.beginPath(); ctx.moveTo(-halfMap, y); ctx.lineTo(halfMap, y); ctx.stroke();
-            }
-
-            // Draw structural buildings map layout obstacles
             obstacles.forEach(obs => {
-                ctx.fillStyle = obs.color;
-                ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
-                
-                // Add stylized dark compound structural drop-shadow borders
-                ctx.strokeStyle = '#2b3640';
-                ctx.lineWidth = 4;
-                ctx.strokeRect(obs.x, obs.y, obs.w, obs.h);
+                ctx.fillStyle = obs.color; ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+                ctx.strokeStyle = '#2b3640'; ctx.lineWidth = 4; ctx.strokeRect(obs.x, obs.y, obs.w, obs.h);
             });
 
-            // Draw Player Character Object Sprite (Red Circle Core)
-            ctx.fillStyle = '#ff4757';
-            ctx.beginPath();
-            ctx.arc(player.x, player.y, player.size / 2, 0, Math.all ? 0 : Math.PI * 2);
-            ctx.fill();
-            
-            // Outer skin ring armor trim
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 3;
-            ctx.stroke();
-
+            ctx.fillStyle = '#ff4757'; ctx.beginPath(); ctx.arc(player.x, player.y, player.size / 2, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.stroke();
             ctx.restore();
-
             requestAnimationFrame(loop);
         }
+        loop();
+    </script>
+</body>
+</html>
