@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fortnite: Memory Heist Royale</title>
+    <title>Fortnite Gun Game Royale (No Mouse)</title>
     <style>
         * {
             box-sizing: border-box;
@@ -103,7 +103,7 @@
         }
 
         .slot {
-            width: 60px;
+            width: 150px;
             height: 60px;
             background: rgba(0, 0, 0, 0.6);
             border: 2px solid #555;
@@ -111,26 +111,13 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 0.8rem;
+            font-size: 1rem;
+            color: #00ff55;
         }
 
         .slot.active {
             border-color: #fbf034;
             box-shadow: 0 0 10px #fbf034;
-        }
-
-        #prompt {
-            position: absolute;
-            bottom: 120px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(251, 240, 52, 0.9);
-            color: #000;
-            padding: 8px 20px;
-            border-radius: 4px;
-            font-size: 1.2rem;
-            display: none;
-            z-index: 10;
         }
 
         /* Entities & Objects */
@@ -145,6 +132,7 @@
             z-index: 5;
         }
 
+        /* Gun barrel indicator */
         #player::after {
             content: '';
             position: absolute;
@@ -184,17 +172,6 @@
             z-index: 3;
         }
 
-        .memory-shard {
-            position: absolute;
-            width: 24px;
-            height: 24px;
-            background: radial-gradient(circle, #00ffff 0%, #0055ff 100%);
-            border-radius: 50%;
-            box-shadow: 0 0 20px #00ffff;
-            animation: pulse 1s infinite alternate;
-            z-index: 3;
-        }
-
         /* Fortnite Storm */
         #storm {
             position: absolute;
@@ -208,6 +185,20 @@
             pointer-events: none;
             box-shadow: inset 0 0 100px rgba(255, 0, 255, 0.4);
             transition: width 0.2s, height 0.2s;
+        }
+
+        /* Controls Help Guide Overlay */
+        #controls-guide {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 12px;
+            border-radius: 6px;
+            font-family: Arial, sans-serif;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            border-left: 4px solid #fbf034;
         }
 
         /* UI Screen Overlays */
@@ -260,57 +251,24 @@
             transform: translateY(2px);
             box-shadow: 0 3px 0 #990033;
         }
-
-        /* Case Solved Modal */
-        #case-modal {
-            display: none;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #1e2235;
-            border: 4px solid #00ffff;
-            padding: 30px;
-            border-radius: 10px;
-            z-index: 30;
-            width: 460px;
-            box-shadow: 0 0 40px rgba(0, 255, 255, 0.3);
-            text-align: center;
-        }
-
-        #case-modal h3 {
-            color: #00ffff;
-            font-size: 1.8rem;
-            margin-bottom: 15px;
-        }
-
-        .case-input {
-            width: 100%;
-            padding: 12px;
-            background: #0c0f1d;
-            border: 2px solid #fbf034;
-            color: #fff;
-            font-size: 1.2rem;
-            border-radius: 4px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-
-        @keyframes pulse {
-            from { transform: translate(-50%, -50%) scale(0.9); opacity: 0.7; }
-            to { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
-        }
     </style>
 </head>
 <body>
 
     <div id="game-container">
+        <!-- Controls Guide Card -->
+        <div id="controls-guide" class="hud">
+            <b style="color: #fbf034;">KEYBOARD ONLY CONTROLS:</b><br>
+            • Move: <span style="color:#00f0ff">WASD</span><br>
+            • Shoot / Aim: <span style="color:#00f0ff">Arrow Keys</span><br>
+            • Build Wall: <span style="color:#00f0ff">Spacebar</span>
+        </div>
+
         <!-- Fortnite HUD -->
         <div id="top-right-hud" class="hud">
             <div class="hud-card" style="border-right-color: #ff00ff;">Storm: <span id="timer">60</span>s</div>
-            <div class="hud-card" style="border-right-color: #fbf034;">Memory Shards: <span id="shard-count">0</span>/3</div>
             <div class="hud-card" style="border-right-color: #00ff55;">Mats (Wood): <span id="mats-count">100</span></div>
-            <div class="hud-card" style="border-right-color: #ffaa00;">Players Left: <span id="players-alive">10</span></div>
+            <div class="hud-card" style="border-right-color: #ffaa00;">Players Left: <span id="players-alive">20</span></div>
         </div>
 
         <div id="bottom-bars" class="hud">
@@ -328,11 +286,8 @@
 
         <!-- Inventory Slots -->
         <div id="inventory-slots">
-            <div class="slot active" id="slot-1">1: SCAR AR</div>
-            <div class="slot" id="slot-2">2: WALLS</div>
+            <div class="slot active" id="weapon-slot">1. Gray Pistol</div>
         </div>
-
-        <div id="prompt" class="hud">Hold [E] to Steal Memory Shard</div>
 
         <!-- Layers -->
         <div id="storm"></div>
@@ -341,25 +296,16 @@
 
         <!-- Menu Screen -->
         <div id="start-screen" class="screen">
-            <h1>FORTNITE</h1>
-            <p style="color: #00ffff; font-weight: bold; font-size: 1.4rem; margin-bottom: 5px;">[MEMORY HEIST EDITION]</p>
-            <p>Eliminate rival players, build defensive walls, and run from the storm circle. To close the criminal case file and win a Victory Royale, you must hunt and steal 3 memory shards!</p>
-            <button onclick="startGame()">Play Solo Match</button>
+            <h1>FORTNITE GUN GAME</h1>
+            <p>Keyboard Edition! Move with WASD. Shoot and aim instantly using your Arrow keys. Tap Spacebar to drop walls. Cycle through 5 tiers to achieve a Victory Royale!</p>
+            <button onclick="startGame()">Drop From Battle Bus</button>
         </div>
 
         <!-- Game Over Screen -->
         <div id="game-over-screen" class="screen" style="display: none;">
             <h1 id="end-title">VICTORY ROYALE</h1>
-            <p id="end-msg">You stole the core memories and cracked the case!</p>
+            <p id="end-msg">You cycled through every weapon and conquered the lobby!</p>
             <button onclick="location.reload()">Return to Lobby</button>
-        </div>
-
-        <!-- Case Solving Terminal Modal -->
-        <div id="case-modal">
-            <h3>[CASE FILE: OVERRIDE]</h3>
-            <p id="case-question" style="font-size: 1rem; margin-bottom: 15px;"></p>
-            <input type="text" id="case-answer" class="case-input" placeholder="Enter solution...">
-            <button onclick="verifyCaseSolution()" style="background:#00ffff; color:#000; text-shadow:none; box-shadow:0 4px 0 #009999; width:100%;">Inject Memory Shard</button>
         </div>
     </div>
 
@@ -367,63 +313,41 @@
         const container = document.getElementById('game-container');
         const playerEl = document.getElementById('player');
         const gameLayer = document.getElementById('game-layer');
+        const weaponSlot = document.getElementById('weapon-slot');
 
-        // State Engines
+        // Gun Game Weapons Configuration
+        const weaponsList = [
+            { name: "1. Gray Pistol", color: "#ffffff", speed: 8, delay: 400 },
+            { name: "2. Blue SMG", color: "#00bcff", speed: 12, delay: 180 },
+            { name: "3. Purple Scar AR", color: "#c5a1ff", speed: 16, delay: 300 },
+            { name: "4. Gold RPG", color: "#ffaa00", speed: 6, delay: 800 },
+            { name: "5. Mythic Gun", color: "#ff0055", speed: 22, delay: 90 }
+        ];
+
+        // Engine State
         let gameRunning = false;
-        let player = { x: 500, y: 350, speed: 5, angle: 0, health: 100, shield: 100, mats: 100 };
-        let activeSlot = 1; // 1 = Weapon, 2 = Building Walls
+        let player = { x: 500, y: 350, speed: 5, angle: 0, health: 100, shield: 100, mats: 100, currentWeapon: 0 };
         let keys = {};
         let bullets = [];
         let enemies = [];
         let walls = [];
-        let memoryShards = [];
-        let collectedShards = 0;
-        let aliveCount = 10;
+        let aliveCount = 20;
         let stormSize = 1600;
         let stormTime = 60;
         let lastFired = 0;
-        let nearShard = null;
-
-        // Memory Case Questions
-        const casePuzzles = [
-            { q: "Memory File 1: 'What belongs to you, but other people use it more than you do?'", a: "name" },
-            { q: "Memory File 2: 'I have cities, but no houses. I have mountains, but no trees. What am I?'", a: "map" },
-            { q: "Memory File 3: 'The person who makes it has no need of it; the person who buys it does not use it for themselves. What is it?'", a: "coffin" }
-        ];
-
-        // Track Aim
-        window.addEventListener('mousemove', e => {
-            let rect = container.getBoundingClientRect();
-            let mX = e.clientX - rect.left;
-            let mY = e.clientY - rect.top;
-            player.angle = Math.atan2(mY - player.y, mX - player.x);
-            playerEl.style.transform = `translate(-50%, -50%) rotate(${player.angle}rad)`;
-        });
 
         // Key Monitors
         window.addEventListener('keydown', e => {
             keys[e.key.toLowerCase()] = true;
-            if (e.key === '1') switchSlot(1);
-            if (e.key === '2') switchSlot(2);
-            if (e.key.toLowerCase() === 'e') tryStealMemory();
-        });
-        window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
-
-        // Click actions (Shoot or Build)
-        container.addEventListener('mousedown', () => {
-            if (!gameRunning) return;
-            if (activeSlot === 1) {
-                fireWeapon();
-            } else if (activeSlot === 2) {
+            // Prevent scrolling behavior for arrow keys & spacebar inside browser window
+            if(["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(e.key.toLowerCase())) {
+                e.preventDefault();
+            }
+            if (e.key === " ") {
                 placeWall();
             }
         });
-
-        function switchSlot(num) {
-            activeSlot = num;
-            document.querySelectorAll('.slot').forEach(s => s.classList.remove('active'));
-            document.getElementById(`slot-${num}`).classList.add('active');
-        }
+        window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
         function startGame() {
             document.getElementById('start-screen').style.display = 'none';
@@ -434,22 +358,7 @@
         }
 
         function initializeMap() {
-            // Spawn 3 Objective Memory Shards
-            for(let i=0; i<3; i++) {
-                let shard = {
-                    x: Math.random() * 800 + 100,
-                    y: Math.random() * 500 + 100,
-                    el: document.createElement('div')
-                };
-                shard.el.className = 'memory-shard';
-                shard.el.style.left = shard.x + 'px';
-                shard.el.style.top = shard.y + 'px';
-                gameLayer.appendChild(shard.el);
-                memoryShards.push(shard);
-            }
-
-            // Spawn Fortnite Lobby Enemies
-            for(let i=0; i<9; i++) {
+            for(let i=0; i<19; i++) {
                 spawnEnemy();
             }
         }
@@ -458,8 +367,8 @@
             let enemy = {
                 x: Math.random() * 900 + 50,
                 y: Math.random() * 600 + 50,
-                dx: (Math.random() - 0.5) * 3,
-                dy: (Math.random() - 0.5) * 3,
+                dx: (Math.random() - 0.5) * 4,
+                dy: (Math.random() - 0.5) * 4,
                 el: document.createElement('div')
             };
             enemy.el.className = 'enemy';
@@ -469,29 +378,34 @@
             enemies.push(enemy);
         }
 
-        function fireWeapon() {
+        function fireWeapon(angleOverride) {
             let now = Date.now();
-            if (now - lastFired < 250) return;
+            let gun = weaponsList[player.currentWeapon];
+            if (now - lastFired < gun.delay) return;
             lastFired = now;
+
+            // Turn player body toward shooting direction
+            player.angle = angleOverride;
+            playerEl.style.transform = `translate(-50%, -50%) rotate(${player.angle}rad)`;
 
             let b = {
                 x: player.x,
                 y: player.y,
-                dx: Math.cos(player.angle) * 12,
-                dy: Math.sin(player.angle) * 12,
+                dx: Math.cos(angleOverride) * gun.speed,
+                dy: Math.sin(angleOverride) * gun.speed,
                 el: document.createElement('div')
             };
             b.el.className = 'bullet';
+            b.el.style.backgroundColor = gun.color;
             gameLayer.appendChild(b.el);
             bullets.push(b);
         }
 
         function placeWall() {
-            if (player.mats < 10) return;
+            if (!gameRunning || player.mats < 10) return;
             player.mats -= 10;
             document.getElementById('mats-count').innerText = player.mats;
 
-            // Place wall exactly where gun is pointing slightly in front of player
             let wall = {
                 x: player.x + Math.cos(player.angle) * 45,
                 y: player.y + Math.sin(player.angle) * 45,
@@ -508,16 +422,22 @@
         function gameLoop() {
             if (!gameRunning) return;
 
-            // Physics Movement Engine
-            if (keys['w'] || keys['arrowup']) player.y = Math.max(17, player.y - player.speed);
-            if (keys['s'] || keys['arrowdown']) player.y = Math.min(683, player.y + player.speed);
-            if (keys['a'] || keys['arrowleft']) player.x = Math.max(17, player.x - player.speed);
-            if (keys['d'] || keys['arrowright']) player.x = Math.min(983, player.x + player.speed);
+            // Movement Processing (WASD)
+            if (keys['w']) player.y = Math.max(17, player.y - player.speed);
+            if (keys['s']) player.y = Math.min(683, player.y + player.speed);
+            if (keys['a']) player.x = Math.max(17, player.x - player.speed);
+            if (keys['d']) player.x = Math.min(983, player.x + player.speed);
 
             playerEl.style.left = player.x + 'px';
             playerEl.style.top = player.y + 'px';
 
-            // Bullet Engine Simulation
+            // Attack Processing (Arrow keys check direction + fire auto)
+            if (keys['arrowup'])    fireWeapon(-Math.PI / 2);
+            else if (keys['arrowdown'])  fireWeapon(Math.PI / 2);
+            else if (keys['arrowleft'])  fireWeapon(Math.PI);
+            else if (keys['arrowright']) fireWeapon(0);
+
+            // Bullet Simulation
             for(let i=bullets.length-1; i>=0; i--) {
                 let b = bullets[i];
                 b.x += b.dx;
@@ -531,7 +451,21 @@
                     continue;
                 }
 
-                // Check hits on enemies
+                // Bullet collision check on walls
+                let hitWall = false;
+                for(let wall of walls) {
+                    let wx = parseFloat(wall.el.style.left) + 20;
+                    let wy = parseFloat(wall.el.style.top) + 20;
+                    if(Math.hypot(b.x - wx, b.y - wy) < 25) {
+                        b.el.remove();
+                        bullets.splice(i,1);
+                        hitWall = true;
+                        break;
+                    }
+                }
+                if (hitWall) continue;
+
+                // Bullet collision check on enemies
                 for(let j=enemies.length-1; j>=0; j--) {
                     let e = enemies[j];
                     if(Math.hypot(b.x - e.x, b.y - e.y) < 20) {
@@ -541,12 +475,22 @@
                         bullets.splice(i,1);
                         aliveCount--;
                         document.getElementById('players-alive').innerText = aliveCount;
+
+                        // Gun Game Weapon Upgrade Mechanics
+                        if (player.currentWeapon < weaponsList.length - 1) {
+                            player.currentWeapon++;
+                            weaponSlot.innerText = weaponsList[player.currentWeapon].name;
+                            weaponSlot.style.color = weaponsList[player.currentWeapon].color;
+                        } else {
+                            endGame(true); // Victory condition reached
+                            return;
+                        }
                         break;
                     }
                 }
             }
 
-            // Enemy Loop (Moving around battle arena)
+            // Enemy Movement Loop
             enemies.forEach(e => {
                 e.x += e.dx;
                 e.y += e.dy;
@@ -555,13 +499,22 @@
                 e.el.style.left = e.x + 'px';
                 e.el.style.top = e.y + 'px';
 
-                // Enemies damage player shields/health on impact contact
+                // Check collision with built walls to bounce off them
+                walls.forEach(wall => {
+                    let wx = parseFloat(wall.el.style.left) + 20;
+                    let wy = parseFloat(wall.el.style.top) + 20;
+                    if(Math.hypot(e.x - wx, e.y - wy) < 30) {
+                        e.dx *= -1;
+                        e.dy *= -1;
+                    }
+                });
+
+                // Collision damage to player
                 if(Math.hypot(player.x - e.x, player.y - e.y) < 25) {
-                    damagePlayer(0.5);
+                    damagePlayer(0.6);
                 }
             });
 
-            checkProximityToMemory();
             checkStormContainment();
 
             requestAnimationFrame(gameLoop);
@@ -581,60 +534,7 @@
             if(player.health <= 0) endGame(false);
         }
 
-        // Distance Checkers
-        function checkProximityToMemory() {
-            let promptEl = document.getElementById('prompt');
-            nearShard = null;
-
-            for(let shard of memoryShards) {
-                if(Math.hypot(player.x - shard.x, player.y - shard.y) < 40) {
-                    nearShard = shard;
-                    break;
-                }
-            }
-            promptEl.style.display = nearShard ? 'block' : 'none';
-        }
-
-        function tryStealMemory() {
-            if(!nearShard || !gameRunning) return;
-            gameRunning = false; // Freeze battle space loop
-
-            let puzzle = casePuzzles[collectedShards];
-            document.getElementById('case-question').innerText = puzzle.q;
-            document.getElementById('case-modal').style.display = 'block';
-            document.getElementById('case-answer').focus();
-        }
-
-        function verifyCaseSolution() {
-            let input = document.getElementById('case-answer').value.trim().toLowerCase();
-            let currentPuzzle = casePuzzles[collectedShards];
-
-            if(input === currentPuzzle.a) {
-                document.getElementById('case-modal').style.display = 'none';
-                document.getElementById('case-answer').value = '';
-
-                // Remove the stolen memory shard asset node
-                nearShard.el.remove();
-                memoryShards = memoryShards.filter(s => s !== nearShard);
-                
-                collectedShards++;
-                document.getElementById('shard-count').innerText = collectedShards;
-
-                // Win check
-                if(collectedShards >= 3) {
-                    endGame(true);
-                    return;
-                }
-
-                // Resume Fortnite loop
-                gameRunning = true;
-                requestAnimationFrame(gameLoop);
-            } else {
-                alert("DECRYPTION ERROR: Memory extraction failed. Solve the case file accurately!");
-            }
-        }
-
-        // Fortnite Storm Systems Engine
+        // Fortnite Storm Mechanics
         function startStormTicker() {
             let timer = setInterval(() => {
                 if (!gameRunning) return;
@@ -642,7 +542,7 @@
                 document.getElementById('timer').innerText = stormTime;
 
                 if (stormTime <= 45) {
-                    stormSize = Math.max(100, stormSize - 12);
+                    stormSize = Math.max(100, stormSize - 15);
                     let stormEl = document.getElementById('storm');
                     stormEl.style.width = stormSize + 'px';
                     stormEl.style.height = stormSize + 'px';
@@ -659,7 +559,7 @@
             let cx = player.x - 500;
             let cy = player.y - 350;
             if(Math.hypot(cx, cy) > stormSize / 2) {
-                damagePlayer(0.3); // Constant storm tick damage
+                damagePlayer(0.4); // Constant storm damage tick
             }
         }
 
@@ -672,11 +572,11 @@
             if(victory) {
                 title.innerText = "🏆 VICTORY ROYALE";
                 title.style.color = "#fbf034";
-                msg.innerText = "Incredible! You survived the loop, eliminated threats, and stole all memory shards to solve the mystery!";
+                msg.innerText = "Incredible! You cycled through all 5 weapon tiers using pure keyboard power!";
             } else {
                 title.innerText = "ELIMINATED IN THE LOOP";
                 title.style.color = "#ff0055";
-                msg.innerText = "You ran out of health or were completely claimed by the closing storm zone wall.";
+                msg.innerText = "You ran out of health or were consumed by the shrinking storm circle.";
             }
             scr.style.display = 'flex';
         }
