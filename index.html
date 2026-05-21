@@ -3,66 +3,133 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Shooter Prototype</title>
+    <title>Roblox Rivals Style Prototype</title>
     <style>
-        body {
+        * { box-sizing: border-box; }
+        body, html {
             margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
             overflow: hidden;
-            backgroundColor: #000;
-            font-family: sans-serif;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+        canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
         }
         #crosshair {
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 10px;
-            height: 10px;
-            background: red;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #00ffcc;
             border-radius: 50%;
             transform: translate(-50%, -50%);
             pointer-events: none;
+            z-index: 10;
         }
-        #ui {
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 2px;
+            height: 2px;
+            background: #00ffcc;
+            border-radius: 50%;
+        }
+        #hud {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 40px;
+            color: white;
+            pointer-events: none;
+            z-index: 10;
+            font-weight: bold;
+            font-size: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+        .stat-box {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 20px;
+            border-radius: 8px;
+            border-left: 5px solid #00ffcc;
+            min-width: 150px;
+            text-align: center;
+        }
+        #killfeed {
             position: absolute;
             top: 20px;
-            left: 20px;
-            color: white;
-            font-size: 24px;
-            text-shadow: 2px 2px 4px #000;
+            right: 20px;
+            color: #ff3333;
+            font-weight: bold;
+            font-size: 18px;
+            text-align: right;
             pointer-events: none;
+            z-index: 10;
         }
-        #instructions {
+        #menu {
             position: absolute;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.7);
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, #1a1a2e 0%, #0f0f1a 100%);
             color: white;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            text-align: center;
+            z-index: 100;
+        }
+        .play-btn {
+            background: #00ffcc;
+            color: #000;
+            border: none;
+            padding: 15px 40px;
+            font-size: 22px;
+            font-weight: bold;
+            border-radius: 30px;
             cursor: pointer;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
+            transition: 0.2s ease;
+            margin-top: 20px;
+        }
+        .play-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(0, 255, 204, 0.8);
         }
     </style>
-    <!-- Include Three.js for 3D Graphics -->
+    <!-- Stable Three.js CDN -->
     <script src="https://cloudflare.com"></script>
 </head>
 <body>
 
     <div id="crosshair"></div>
-    <div id="ui">Score: <span id="score">0</span></div>
-    <div id="instructions">
-        <h1>3D GUN GAME</h1>
-        <p>Click to Play</p>
-        <p><b>WASD</b> to Move | <b>Mouse</b> to Look | <b>Left Click</b> to Shoot</p>
+    
+    <div id="hud">
+        <div class="stat-box">ELIMS: <span id="score">0</span></div>
+        <div class="stat-box" style="border-left-color: #ff3366;">HP: <span id="hp">100</span></div>
+    </div>
+
+    <div id="killfeed"></div>
+
+    <div id="menu">
+        <h1 style="font-size: 48px; letter-spacing: 2px; margin-bottom: 5px; text-shadow: 0 0 10px #00ffcc;">RIVALS PROTOTYPE</h1>
+        <p style="color: #8a8ab3; margin-bottom: 25px;">WASD to Move | Space to Jump | Mouse to Aim & Shoot</p>
+        <button class="play-btn" id="start-btn">DEPLOY</button>
     </div>
 
     <script>
-        // --- Setup Scene, Camera, and Renderer ---
+        // --- System Init ---
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87ceeb); // Sky blue
-        scene.fog = new THREE.FogExp2(0x87ceeb, 0.015);
+        scene.background = new THREE.Color(0x0a0a16);
+        scene.fog = new THREE.FogExp2(0x0a0a16, 0.015);
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -71,165 +138,243 @@
         document.body.appendChild(renderer.domElement);
 
         // --- Lighting ---
-        const light = new THREE.DirectionalLight(0xffffff, 1);
-        light.position.set(20, 40, 20);
-        light.castShadow = true;
-        scene.add(light);
-        scene.add(new THREE.AmbientLight(0x404040, 1.5));
+        const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+        sun.position.set(30, 50, 20);
+        sun.castShadow = true;
+        scene.add(sun);
+        scene.add(new THREE.AmbientLight(0x3a3a5a, 0.8));
 
-        // --- Environment (Map) ---
-        // Floor
-        const floorGeo = new THREE.PlaneGeometry(100, 100);
-        const floorMat = new THREE.MeshStandardMaterial({ color: 0x228b22 }); // Grass Green
+        // --- Grid Arena (Roblox Theme) ---
+        const arenaSize = 120;
+        const floorGeo = new THREE.PlaneGeometry(arenaSize, arenaSize);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x1f1f38, roughness: 0.6 });
         const floor = new THREE.Mesh(floorGeo, floorMat);
         floor.rotation.x = -Math.PI / 2;
         floor.receiveShadow = true;
         scene.add(floor);
 
-        // Obstacles / Red Targets
-        const targets = [];
-        const targetGeo = new THREE.BoxGeometry(2, 4, 2);
-        const targetMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+        const grid = new THREE.GridHelper(arenaSize, 60, 0x00ffcc, 0x2d2d44);
+        grid.position.y = 0.01;
+        scene.add(grid);
 
-        for(let i = 0; i < 15; i++) {
-            const target = new THREE.Mesh(targetGeo, targetMat);
-            target.position.set((Math.random() - 0.5) * 60, 2, (Math.random() - 0.5) * 60);
-            target.castShadow = true;
-            scene.add(target);
-            targets.push(target);
+        // Neon pillars/obstructions
+        const pillars = [];
+        const pillarGeo = new THREE.BoxGeometry(4, 10, 4);
+        for(let i=0; i<12; i++) {
+            const pillarMat = new THREE.MeshStandardMaterial({ color: 0x151525, metalness: 0.2, roughness: 0.3 });
+            const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+            pillar.position.set((Math.random()-0.5)*80, 5, (Math.random()-0.5)*80);
+            pillar.castShadow = true;
+            pillar.receiveShadow = true;
+            scene.add(pillar);
+            pillars.push(pillar);
+
+            // Neon trim on top of pillars
+            const trimGeo = new THREE.BoxGeometry(4.2, 0.4, 4.2);
+            const trimMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc });
+            const trim = new THREE.Mesh(trimGeo, trimMat);
+            trim.position.set(pillar.position.x, 10, pillar.position.z);
+            scene.add(trim);
         }
 
-        // --- Player & Gun Setup ---
-        camera.position.set(0, 2, 5);
+        // --- Enemies Logic ---
+        const enemies = [];
+        const enemyGeo = new THREE.BoxGeometry(2, 3, 2);
+        const enemyMat = new THREE.MeshStandardMaterial({ color: 0xff3366, metalness: 0.3 });
+
+        function spawnEnemy() {
+            const enemy = new THREE.Mesh(enemyGeo, enemyMat);
+            enemy.position.set((Math.random()-0.5)*90, 1.5, (Math.random()-0.5)*90);
+            enemy.castShadow = true;
+            // Movement heading
+            enemy.userData = { angle: Math.random() * Math.PI * 2, speed: 4 + Math.random()*4 };
+            scene.add(enemy);
+            enemies.push(enemy);
+        }
+        for(let i=0; i<6; i++) spawnEnemy();
+
+        // --- Player Setup ---
+        camera.position.set(0, 2.5, 0);
         
-        // Simple Gun Model (Attached to Camera)
-        const gunGeo = new THREE.BoxGeometry(0.2, 0.2, 1);
-        const gunMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
-        const gun = new THREE.Mesh(gunGeo, gunMat);
-        gun.position.set(0.3, -0.3, -0.8); // Position relative to camera
-        camera.add(gun);
-        scene.add(camera); // Add camera to scene to see the gun
+        // Rivals Gun Viewmodel
+        const gunGroup = new THREE.Group();
+        const mainBody = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.8), new THREE.MeshStandardMaterial({color: 0x111115}));
+        const laserPointer = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.4), new THREE.MeshBasicMaterial({color: 0x00ffcc}));
+        laserPointer.position.set(0, 0.08, -0.2);
+        gunGroup.add(mainBody, laserPointer);
+        
+        // Position gun on screen right side
+        gunGroup.position.set(0.35, -0.3, -0.6);
+        camera.add(gunGroup);
+        scene.add(camera);
 
-        // --- Controls State ---
-        let moveForward = false;
-        let moveBackward = false;
-        let moveLeft = false;
-        let moveRight = false;
+        // --- Game Engine Variables ---
+        let isLocked = false;
         let score = 0;
-
-        const velocity = new THREE.Vector3();
-        const direction = new THREE.Vector3();
+        let moveF = false, moveB = false, moveL = false, moveR = false;
+        let velocity = new THREE.Vector3();
+        let direction = new THREE.Vector3();
+        let isGrounded = true;
+        let jumpVelocity = 0;
         const clock = new THREE.Clock();
 
-        // --- Pointer Lock (FPS Mouse Look) ---
-        const instructions = document.getElementById('instructions');
-        
-        instructions.addEventListener('click', () => {
-            document.body.requestPointerLock();
-        });
-
-        document.addEventListener('pointerlockchange', () => {
-            if (document.pointerLockElement === document.body) {
-                instructions.style.display = 'none';
-            } else {
-                instructions.style.display = 'flex';
-            }
-        });
-
-        // Mouse Rotation
-        let pitch = 0;
-        let yaw = 0;
-        document.addEventListener('mousemove', (event) => {
-            if (document.pointerLockElement !== document.body) return;
-
-            yaw -= event.movementX * 0.002;
-            pitch -= event.movementY * 0.002;
-
-            // Clamp vertical look to prevent flipping upside down
-            pitch = Math.max(-Math.PI / 2.5, Math.min(Math.PI / 2.5, pitch));
-
+        // --- Mouse Aim Mechanics ---
+        let pitch = 0, yaw = 0;
+        document.addEventListener('mousemove', (e) => {
+            if (!isLocked) return;
+            yaw -= e.movementX * 0.0022;
+            pitch -= e.movementY * 0.0022;
+            pitch = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, pitch));
             camera.rotation.set(pitch, yaw, 0, 'YXZ');
         });
 
-        // Keyboard Movement
+        // --- Input Keys ---
         document.addEventListener('keydown', (e) => {
-            if (e.code === 'KeyW') moveForward = true;
-            if (e.code === 'KeyS') moveBackward = true;
-            if (e.code === 'KeyA') moveLeft = true;
-            if (e.code === 'KeyD') moveRight = true;
+            if(e.code === 'KeyW' || e.code === 'ArrowUp') moveF = true;
+            if(e.code === 'KeyS' || e.code === 'ArrowDown') moveB = true;
+            if(e.code === 'KeyA' || e.code === 'ArrowLeft') moveL = true;
+            if(e.code === 'KeyD' || e.code === 'ArrowRight') moveR = true;
+            if(e.code === 'Space' && isGrounded) {
+                jumpVelocity = 12; // Jump power
+                isGrounded = false;
+            }
         });
-
         document.addEventListener('keyup', (e) => {
-            if (e.code === 'KeyW') moveForward = false;
-            if (e.code === 'KeyS') moveBackward = false;
-            if (e.code === 'KeyA') moveLeft = false;
-            if (e.code === 'KeyD') moveRight = false;
+            if(e.code === 'KeyW' || e.code === 'ArrowUp') moveF = false;
+            if(e.code === 'KeyS' || e.code === 'ArrowDown') moveB = false;
+            if(e.code === 'KeyA' || e.code === 'ArrowLeft') moveL = false;
+            if(e.code === 'KeyD' || e.code === 'ArrowRight') moveR = false;
         });
 
-        // --- Shooting System (Raycasting) ---
+        // --- Laser Gun Raycast System ---
         const raycaster = new THREE.Raycaster();
-        const centerMouse = new THREE.Vector2(0, 0); // Center of screen
+        const centerScreen = new THREE.Vector2(0, 0);
 
         document.addEventListener('mousedown', (e) => {
-            if (document.pointerLockElement !== document.body) return;
-            if (e.button !== 0) return; // Only left click
+            if (!isLocked || e.button !== 0) return;
 
-            // Gun recoil visual effect
-            gun.position.z = -0.6;
-            setTimeout(() => gun.position.z = -0.8, 50);
+            // Punchy Gun Recoil Kick
+            gunGroup.position.z = -0.45;
+            gunGroup.position.y = -0.27;
+            setTimeout(() => {
+                gunGroup.position.z = -0.6;
+                gunGroup.position.y = -0.3;
+            }, 60);
 
-            // Shoot Raycast
-            raycaster.setFromCamera(centerMouse, camera);
-            const intersects = raycaster.intersectObjects(targets);
+            // Laser Beam Line FX
+            raycaster.setFromCamera(centerScreen, camera);
+            
+            // Draw a quick shooting tracer line
+            const origin = new THREE.Vector3();
+            gunGroup.getWorldPosition(origin);
+            const targetPos = new THREE.Vector3();
+            raycaster.ray.at(40, targetPos); // Fallback beam end point
 
-            if (intersects.length > 0) {
-                const hitTarget = intersects[0].object;
-                
-                // Teleport hit target to a new random location
-                hitTarget.position.set((Math.random() - 0.5) * 60, 2, (Math.random() - 0.5) * 60);
-                
-                // Update Score
+            const hits = raycaster.intersectObjects(enemies);
+            if(hits.length > 0) {
+                const targetEnemy = hits[0].object;
+                targetPos.copy(hits[0].point);
+
+                // Hit confirmation effect
+                targetEnemy.material.color.setHex(0xffffff);
+                setTimeout(() => targetEnemy.material.color.setHex(0xff3366), 80);
+
+                // Eliminate and respawn
+                targetEnemy.position.set((Math.random()-0.5)*90, 1.5, (Math.random()-0.5)*90);
                 score++;
                 document.getElementById('score').innerText = score;
+                
+                showKillfeed("RIVAL ELIMINATED (+100)");
+            }
+
+            createTracer(origin, targetPos);
+        });
+
+        function createTracer(start, end) {
+            const points = [start, end];
+            const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+            const lineMat = new THREE.LineBasicMaterial({ color: 0x00ffcc, linewidth: 3 });
+            const line = new THREE.Line(lineGeo, lineMat);
+            scene.add(line);
+            setTimeout(() => scene.removeItem ? scene.removeItem(line) : scene.remove(line), 40);
+        }
+
+        function showKillfeed(text) {
+            const kf = document.getElementById('killfeed');
+            kf.innerText = text;
+            setTimeout(() => { if(kf.innerText === text) kf.innerText = ""; }, 2000);
+        }
+
+        // --- Window Deployment Lock ---
+        const menu = document.getElementById('menu');
+        document.getElementById('start-btn').addEventListener('click', () => {
+            document.body.requestPointerLock();
+        });
+        document.addEventListener('pointerlockchange', () => {
+            if (document.pointerLockElement === document.body) {
+                isLocked = true;
+                menu.style.display = 'none';
+            } else {
+                isLocked = false;
+                menu.style.display = 'flex';
             }
         });
 
-        // --- Game Loop ---
+        // --- Core Game Loops ---
         function animate() {
             requestAnimationFrame(animate);
+            const delta = Math.min(clock.getDelta(), 0.1); // clamp delta during lag spikes
 
-            const delta = clock.getDelta();
+            if (isLocked) {
+                // Ground Physics Movement
+                velocity.x -= velocity.x * 12.0 * delta;
+                velocity.z -= velocity.z * 12.0 * delta;
 
-            if (document.pointerLockElement === document.body) {
-                // Movement physics damping
-                velocity.x -= velocity.x * 10.0 * delta;
-                velocity.z -= velocity.z * 10.0 * delta;
+                direction.z = Number(moveF) - Number(moveB);
+                direction.x = Number(moveR) - Number(moveL);
+                direction.normalize();
 
-                direction.z = Number(moveForward) - Number(moveBackward);
-                direction.x = Number(moveRight) - Number(moveLeft);
-                direction.normalize(); 
+                const camDir = new THREE.Vector3();
+                camera.getWorldDirection(camDir);
+                camDir.y = 0;
+                camDir.normalize();
 
-                // Forward/Backward based on camera rotation matrix
-                const camDirection = new THREE.Vector3();
-                camera.getWorldDirection(camDirection);
-                camDirection.y = 0; // Keep movement on flat ground
-                camDirection.normalize();
+                const camRight = new THREE.Vector3().crossVectors(camera.up, camDir).normalize();
 
-                const camRight = new THREE.Vector3();
-                camRight.crossVectors(camera.up, camDirection).normalize();
-
-                if (moveForward) velocity.addScaledVector(camDirection, 40 * delta);
-                if (moveBackward) velocity.addScaledVector(camDirection, -40 * delta);
-                if (moveLeft) velocity.addScaledVector(camRight, 40 * delta);
-                if (moveRight) velocity.addScaledVector(camRight, -40 * delta);
+                if (moveF) velocity.addScaledVector(camDir, 55 * delta);
+                if (moveB) velocity.addScaledVector(camDir, -55 * delta);
+                if (moveL) velocity.addScaledVector(camRight, 55 * delta);
+                if (moveR) velocity.addScaledVector(camRight, -55 * delta);
 
                 camera.position.add(velocity);
+
+                // Verticals & Gravity jumping mechanics
+                if (!isGrounded) {
+                    jumpVelocity -= 32 * delta; // Gravity force
+                    camera.position.y += jumpVelocity * delta;
+
+                    if (camera.position.y <= 2.5) { // Floor ceiling limit
+                        camera.position.y = 2.5;
+                        jumpVelocity = 0;
+                        isGrounded = true;
+                    }
+                }
             }
+
+            // Move Bot AI Entities randomly across the grid 
+            enemies.forEach(enemy => {
+                enemy.userData.angle += (Math.random() - 0.5) * 0.1;
+                enemy.position.x += Math.cos(enemy.userData.angle) * enemy.userData.speed * delta;
+                enemy.position.z += Math.sin(enemy.userData.angle) * enemy.userData.speed * delta;
+
+                // Wall boundary bounces
+                if (Math.abs(enemy.position.x) > 55) enemy.userData.angle = Math.PI - enemy.userData.angle;
+                if (Math.abs(enemy.position.z) > 55) enemy.userData.angle = -enemy.userData.angle;
+            });
 
             renderer.render(scene, camera);
         }
 
-        // --- Handle Resize ---
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
