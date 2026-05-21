@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roblox Rivals JavaScript Edition</title>
+    <title>Roblox Rivals No-Mouse Edition</title>
     <style>
         * { box-sizing: border-box; }
         body, html {
@@ -52,7 +52,7 @@
             pointer-events: none; z-index: 10;
         }
 
-        /* Menu Overlay */
+        /* Keyboard Active Menu Overlay */
         #lobby {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: radial-gradient(circle at center, #14142b 0%, #070712 100%);
@@ -62,8 +62,9 @@
         .title {
             font-size: 56px; color: #ffffff; margin: 0 0 10px 0;
             text-shadow: 0 0 15px #00ffcc, 0 0 30px #00ffcc; letter-spacing: 4px;
+            text-align: center;
         }
-        .controls-hint { font-size: 16px; color: #737399; margin-bottom: 40px; font-family: sans-serif;}
+        .controls-hint { font-size: 18px; color: #a1a1d4; margin-bottom: 40px; font-family: sans-serif; text-align: center; line-height: 1.6; }
         .deploy-btn {
             background: #00ffcc; color: #050510; border: none;
             padding: 18px 60px; font-size: 24px; font-weight: 900;
@@ -91,9 +92,13 @@
     <div id="killfeed"></div>
 
     <div id="lobby">
-        <h1 class="title">RIVALS Arena</h1>
-        <p class="controls-hint">MOUSE = Aim & Shoot | WASD = Move | SPACE = Jump</p>
-        <button class="deploy-btn" id="lock-target">DEPLOY MATCH</button>
+        <h1 class="title">RIVALS NO-MOUSE</h1>
+        <p class="controls-hint">
+            <b>WASD</b> = Walk & Strafe <br>
+            <b>ARROW KEYS</b> = Aim Camera <br>
+            <b>SPACEBAR</b> = Jump | <b>ENTER KEY</b> = Shoot Weapon
+        </p>
+        <button class="deploy-btn" id="start-match">PRESS ENTER TO DEPLOY</button>
     </div>
 
     <!-- Secure ES Module Setup to prevent scripts blocking on GitHub Pages -->
@@ -202,66 +207,76 @@
         scene.add(camera);
 
         // --- Gameplay Controller Variables ---
-        let lockedState = false;
+        let matchActive = false;
         let killCount = 0;
         let moveF = false, moveB = false, moveL = false, moveR = false;
+        let lookLeft = false, lookRight = false, lookUp = false, lookDown = false;
+        
         let velocityVector = new THREE.Vector3();
-        let targetVelocity = new THREE.Vector3();
         let isGroundedState = true;
         let verticalForce = 0;
+        let lookPitch = 0, lookYaw = 0;
+        
         const executionClock = new THREE.Clock();
 
-        // --- Native Pointer Lock API Control Hook ---
+        // --- Start Game Logic (Keyboard Deploy) ---
         const lobbyScreen = document.getElementById('lobby');
-        document.getElementById('lock-target').addEventListener('click', () => {
-            document.body.requestPointerLock();
-        });
+        
+        function activateGame() {
+            matchActive = true;
+            lobbyScreen.style.display = 'none';
+        }
+        document.getElementById('start-match').addEventListener('click', activateGame);
 
-        document.addEventListener('pointerlockchange', () => {
-            if (document.pointerLockElement === document.body) {
-                lockedState = true;
-                lobbyScreen.style.display = 'none';
-            } else {
-                lockedState = false;
-                lobbyScreen.style.display = 'flex';
-            }
-        });
-
-        // Mouse Pitch/Yaw Matrix Calculation
-        let lookPitch = 0, lookYaw = 0;
-        document.addEventListener('mousemove', (e) => {
-            if (!lockedState) return;
-            lookYaw -= e.movementX * 0.0022;
-            lookPitch -= e.movementY * 0.0022;
-            lookPitch = Math.max(-Math.PI / 2.3, Math.min(Math.PI / 2.3, lookPitch));
-            camera.rotation.set(lookPitch, lookYaw, 0, 'YXZ');
-        });
-
-        // Movement Listeners
+        // --- Keyboard Movement and Camera Listeners ---
         document.addEventListener('keydown', (e) => {
+            // Deploy with Enter
+            if (!matchActive && e.code === 'Enter') {
+                activateGame();
+                return;
+            }
+
+            // Movement Inputs
             if (e.code === 'KeyW') moveF = true;
             if (e.code === 'KeyS') moveB = true;
             if (e.code === 'KeyA') moveL = true;
             if (e.code === 'KeyD') moveR = true;
-            if (e.code === 'Space' && isGroundedState) {
-                verticalForce = 13; // Jump execution velocity
+
+            // Camera Look Inputs
+            if (e.code === 'ArrowLeft') lookLeft = true;
+            if (e.code === 'ArrowRight') lookRight = true;
+            if (e.code === 'ArrowUp') lookUp = true;
+            if (e.code === 'ArrowDown') lookDown = true;
+
+            // Jumping Physics
+            if (e.code === 'Space' && isGroundedState && matchActive) {
+                verticalForce = 13; 
                 isGroundedState = false;
             }
+
+            // Shooting Execution
+            if (e.code === 'Enter' && matchActive) {
+                executeWeaponFire();
+            }
         });
+
         document.addEventListener('keyup', (e) => {
             if (e.code === 'KeyW') moveF = false;
             if (e.code === 'KeyS') moveB = false;
             if (e.code === 'KeyA') moveL = false;
             if (e.code === 'KeyD') moveR = false;
+
+            if (e.code === 'ArrowLeft') lookLeft = false;
+            if (e.code === 'ArrowRight') lookRight = false;
+            if (e.code === 'ArrowUp') lookUp = false;
+            if (e.code === 'ArrowDown') lookDown = false;
         });
 
-        // --- Raycasting Shot & Hit Engine ---
+        // --- Raycasting Weapon Shooting System ---
         const hitDetectionRaycaster = new THREE.Raycaster();
         const centerCoords = new THREE.Vector2(0, 0);
 
-        document.addEventListener('mousedown', (e) => {
-            if (!lockedState || e.button !== 0) return;
-
+        function executeWeaponFire() {
             // Recoil Animation Effect
             weaponFrame.position.z = -0.5;
             weaponFrame.position.y = -0.28;
@@ -279,8 +294,8 @@
 
             const activeHits = hitDetectionRaycaster.intersectObjects(enemies);
             if (activeHits.length > 0) {
-                const shotTarget = activeHits[0].object;
-                destinationBeamVector.copy(activeHits[0].point);
+                const shotTarget = activeHits.object;
+                destinationBeamVector.copy(activeHits.point);
 
                 // Target Hit Flash
                 shotTarget.material.color.setHex(0xffffff);
@@ -296,7 +311,7 @@
             }
 
             renderBulletTracerLine(barrelPosition, destinationBeamVector);
-        });
+        }
 
         function renderBulletTracerLine(origin, endpoint) {
             const pathPoints = [origin, endpoint];
@@ -318,13 +333,21 @@
             requestAnimationFrame(runFrameEngine);
             const timeDelta = Math.min(executionClock.getDelta(), 0.1);
 
-            if (lockedState) {
+            if (matchActive) {
+                // Keyboard Camera Rotation Updates
+                const rotationSpeed = 1.8 * timeDelta;
+                if (lookLeft) lookYaw += rotationSpeed;
+                if (lookRight) lookYaw -= rotationSpeed;
+                if (lookUp) lookPitch += rotationSpeed;
+                if (lookDown) lookPitch -= rotationSpeed;
+
+                // Clamp looking vertical matrix bounds
+                lookPitch = Math.max(-Math.PI / 2.3, Math.min(Math.PI / 2.3, lookPitch));
+                camera.rotation.set(lookPitch, lookYaw, 0, 'YXZ');
+
                 // Movement Decay Friction
                 velocityVector.x -= velocityVector.x * 12.0 * timeDelta;
                 velocityVector.z -= velocityVector.z * 12.0 * timeDelta;
-
-                const headingForward = Number(moveF) - Number(moveB);
-                const headingSide = Number(moveD) - Number(moveL); // Mapping direction changes safely
 
                 const cameraLookDirection = new THREE.Vector3();
                 camera.getWorldDirection(cameraLookDirection);
@@ -342,7 +365,7 @@
 
                 // Gravity Fall Calculations
                 if (!isGroundedState) {
-                    verticalForce -= 35 * timeDelta; // Gravity down force
+                    verticalForce -= 35 * timeDelta; 
                     camera.position.y += verticalForce * timeDelta;
 
                     if (camera.position.y <= 3) {
