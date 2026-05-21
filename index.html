@@ -29,21 +29,20 @@
         .ch-v { width: 2px; height: 16px; left: 7px; top: 0; }
         .ch-h { width: 16px; height: 2px; left: 0; top: 7px; }
 
-        /* Rivals Match HUD */
+        /* Rivals HUD */
         #hud {
             position: absolute; bottom: 40px; left: 50%;
             transform: translateX(-50%); display: flex;
             gap: 30px; pointer-events: none; z-index: 10;
         }
         .stat-card {
-            background: linear-gradient(135deg, rgba(15,15,35,0.85) 0%, rgba(5,5,15,0.9) 100%);
+            background: linear-gradient(135deg, rgba(15,15,35,0.9) 0%, rgba(5,5,15,0.95) 100%);
             color: white; padding: 12px 30px; border-radius: 6px;
             border: 2px solid #2a2a4a; min-width: 160px; text-align: center;
             box-shadow: 0 8px 20px rgba(0,0,0,0.5);
         }
         .stat-val { font-size: 28px; font-weight: 900; margin-top: 5px; }
         #score-val { color: #00ffcc; text-shadow: 0 0 8px rgba(0,255,204,0.5); }
-        #hp-val { color: #ff3366; text-shadow: 0 0 8px rgba(255,51,102,0.5); }
 
         #killfeed {
             position: absolute; top: 30px; right: 30px;
@@ -70,12 +69,10 @@
             padding: 18px 60px; font-size: 24px; font-weight: 900;
             border-radius: 4px; cursor: pointer; letter-spacing: 1px;
             box-shadow: 0 0 25px rgba(0, 255, 204, 0.5);
-            transition: transform 0.1s, box-shadow 0.2s;
-        }
-        .deploy-btn:hover {
-            transform: scale(1.04); box-shadow: 0 0 40px rgba(0, 255, 204, 0.9);
         }
     </style>
+    <!-- Standard Global Script CDN for Maximum Compatibility -->
+    <script src="https://cloudflare.com"></script>
 </head>
 <body>
 
@@ -86,7 +83,7 @@
     
     <div id="hud">
         <div class="stat-card"><div>ELIMINATIONS</div><div id="score-val" class="stat-val">0</div></div>
-        <div class="stat-card"><div>HEALTH</div><div id="hp-val" class="stat-val">100</div></div>
+        <div class="stat-card"><div>HEALTH</div><div style="color: #ff3366;" class="stat-val">100</div></div>
     </div>
 
     <div id="killfeed"></div>
@@ -94,316 +91,278 @@
     <div id="lobby">
         <h1 class="title">RIVALS NO-MOUSE</h1>
         <p class="controls-hint">
-            <b>WASD</b> = Walk & Strafe <br>
-            <b>ARROW KEYS</b> = Aim Camera <br>
+            <b>WASD</b> = Walk around the arena <br>
+            <b>ARROW KEYS</b> = Look & Aim Camera <br>
             <b>SPACEBAR</b> = Jump | <b>ENTER KEY</b> = Shoot Weapon
         </p>
-        <button class="deploy-btn" id="start-match">PRESS ENTER TO DEPLOY</button>
+        <button class="deploy-btn" id="start-match">PRESS ENTER TO PLAY</button>
     </div>
 
-    <!-- Secure ES Module Setup to prevent scripts blocking on GitHub Pages -->
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com"
-            }
-        }
-    </script>
+    <script>
+        // Use classic global THREE engine scope to bypass GitHub's module rules
+        window.addEventListener('load', function() {
+            // --- Core Scene Engine Setup ---
+            var scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x060610);
+            scene.fog = new THREE.FogExp2(0x060610, 0.02);
 
-    <script type="module">
-        import * as THREE from 'three';
+            var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            var renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
 
-        // --- Core Scene Engine Setup ---
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x060610);
-        scene.fog = new THREE.FogExp2(0x060610, 0.02);
+            // --- Lighting ---
+            var sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
+            sunLight.position.set(40, 60, 20);
+            sunLight.castShadow = true;
+            scene.add(sunLight);
+            scene.add(new THREE.AmbientLight(0x1a1a3a, 1.2));
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        document.body.appendChild(renderer.domElement);
+            // --- Build Arena Floor ---
+            var mapRadius = 100;
+            var floorGeo = new THREE.PlaneGeometry(mapRadius, mapRadius);
+            var floorMat = new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 0.7 });
+            var floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
 
-        // --- Arena Level Environment Lighting ---
-        const sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
-        sunLight.position.set(40, 60, 20);
-        sunLight.castShadow = true;
-        scene.add(sunLight);
-        scene.add(new THREE.AmbientLight(0x1a1a3a, 1.2));
+            var gridDisplay = new THREE.GridHelper(mapRadius, 50, 0x00ffcc, 0x22223b);
+            gridDisplay.position.y = 0.02;
+            scene.add(gridDisplay);
 
-        // --- Build Roblox Neon Map Grid ---
-        const mapRadius = 100;
-        const floorGeo = new THREE.PlaneGeometry(mapRadius, mapRadius);
-        const floorMat = new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 0.7 });
-        const floor = new THREE.Mesh(floorGeo, floorMat);
-        floor.rotation.x = -Math.PI / 2;
-        floor.receiveShadow = true;
-        scene.add(floor);
-
-        const gridDisplay = new THREE.GridHelper(mapRadius, 50, 0x00ffcc, 0x22223bb);
-        gridDisplay.position.y = 0.02;
-        scene.add(gridDisplay);
-
-        // Map Boundary Walls
-        const wallMat = new THREE.MeshStandardMaterial({ color: 0x0a0a18 });
-        const createWall = (w, h, d, x, y, z) => {
-            const wall = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wallMat);
-            wall.position.set(x, y, z);
-            scene.add(wall);
-        };
-        createWall(mapRadius, 8, 2, 0, 4, -mapRadius/2);
-        createWall(mapRadius, 8, 2, 0, 4, mapRadius/2);
-        createWall(2, 8, mapRadius, -mapRadius/2, 4, 0);
-        createWall(2, 8, mapRadius, mapRadius/2, 4, 0);
-
-        // Strategic Cover Pillars
-        const pillars = [];
-        const pSize = 4; const pHeight = 12;
-        const pillarGeo = new THREE.BoxGeometry(pSize, pHeight, pSize);
-        const pillarMat = new THREE.MeshStandardMaterial({ color: 0x1c1c30, roughness: 0.4 });
-        
-        for (let i = 0; i < 14; i++) {
-            const pillar = new THREE.Mesh(pillarGeo, pillarMat);
-            pillar.position.set((Math.random() - 0.5) * 70, pHeight/2, (Math.random() - 0.5) * 70);
-            pillar.castShadow = true; pillar.receiveShadow = true;
-            scene.add(pillar);
-            pillars.push(pillar);
-
-            // Neon glowing line decorations over objects
-            const topGlowGeo = new THREE.BoxGeometry(pSize + 0.2, 0.3, pSize + 0.2);
-            const topGlowMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc });
-            const glowRing = new THREE.Mesh(topGlowGeo, topGlowMat);
-            glowRing.position.set(pillar.position.x, pHeight, pillar.position.z);
-            scene.add(glowRing);
-        }
-
-        // --- Target Enemies Spawn Configuration ---
-        const enemies = [];
-        const botGeo = new THREE.BoxGeometry(2.5, 4, 2.5);
-        const botMat = new THREE.MeshStandardMaterial({ color: 0xff3366, roughness: 0.2 });
-
-        function createEnemyBot() {
-            const bot = new THREE.Mesh(botGeo, botMat);
-            bot.position.set((Math.random() - 0.5) * 80, 2, (Math.random() - 0.5) * 80);
-            bot.castShadow = true;
-            bot.userData = { direction: Math.random() * Math.PI * 2, speed: 6 + Math.random() * 5 };
-            scene.add(bot);
-            enemies.push(bot);
-        }
-        for (let i = 0; i < 7; i++) createEnemyBot();
-
-        // --- Weapon & Camera Layout ---
-        camera.position.set(0, 3, 0);
-        
-        const weaponFrame = new THREE.Group();
-        const bodyMesh = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.9), new THREE.MeshStandardMaterial({ color: 0x222226 }));
-        const tipMesh = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.3), new THREE.MeshBasicMaterial({ color: 0x00ffcc }));
-        tipMesh.position.set(0, 0.06, -0.3);
-        weaponFrame.add(bodyMesh, tipMesh);
-        
-        // Position weapon forward right
-        weaponFrame.position.set(0.32, -0.32, -0.65);
-        camera.add(weaponFrame);
-        scene.add(camera);
-
-        // --- Gameplay Controller Variables ---
-        let matchActive = false;
-        let killCount = 0;
-        let moveF = false, moveB = false, moveL = false, moveR = false;
-        let lookLeft = false, lookRight = false, lookUp = false, lookDown = false;
-        
-        let velocityVector = new THREE.Vector3();
-        let isGroundedState = true;
-        let verticalForce = 0;
-        let lookPitch = 0, lookYaw = 0;
-        
-        const executionClock = new THREE.Clock();
-
-        // --- Start Game Logic (Keyboard Deploy) ---
-        const lobbyScreen = document.getElementById('lobby');
-        
-        function activateGame() {
-            matchActive = true;
-            lobbyScreen.style.display = 'none';
-        }
-        document.getElementById('start-match').addEventListener('click', activateGame);
-
-        // --- Keyboard Movement and Camera Listeners ---
-        document.addEventListener('keydown', (e) => {
-            // Deploy with Enter
-            if (!matchActive && e.code === 'Enter') {
-                activateGame();
-                return;
-            }
-
-            // Movement Inputs
-            if (e.code === 'KeyW') moveF = true;
-            if (e.code === 'KeyS') moveB = true;
-            if (e.code === 'KeyA') moveL = true;
-            if (e.code === 'KeyD') moveR = true;
-
-            // Camera Look Inputs
-            if (e.code === 'ArrowLeft') lookLeft = true;
-            if (e.code === 'ArrowRight') lookRight = true;
-            if (e.code === 'ArrowUp') lookUp = true;
-            if (e.code === 'ArrowDown') lookDown = true;
-
-            // Jumping Physics
-            if (e.code === 'Space' && isGroundedState && matchActive) {
-                verticalForce = 13; 
-                isGroundedState = false;
-            }
-
-            // Shooting Execution
-            if (e.code === 'Enter' && matchActive) {
-                executeWeaponFire();
-            }
-        });
-
-        document.addEventListener('keyup', (e) => {
-            if (e.code === 'KeyW') moveF = false;
-            if (e.code === 'KeyS') moveB = false;
-            if (e.code === 'KeyA') moveL = false;
-            if (e.code === 'KeyD') moveR = false;
-
-            if (e.code === 'ArrowLeft') lookLeft = false;
-            if (e.code === 'ArrowRight') lookRight = false;
-            if (e.code === 'ArrowUp') lookUp = false;
-            if (e.code === 'ArrowDown') lookDown = false;
-        });
-
-        // --- Raycasting Weapon Shooting System ---
-        const hitDetectionRaycaster = new THREE.Raycaster();
-        const centerCoords = new THREE.Vector2(0, 0);
-
-        function executeWeaponFire() {
-            // Recoil Animation Effect
-            weaponFrame.position.z = -0.5;
-            weaponFrame.position.y = -0.28;
-            setTimeout(() => {
-                weaponFrame.position.z = -0.65;
-                weaponFrame.position.y = -0.32;
-            }, 60);
-
-            hitDetectionRaycaster.setFromCamera(centerCoords, camera);
+            // Strategic Cover Pillars
+            var enemies = [];
+            var pillars = [];
+            var pSize = 4; var pHeight = 12;
+            var pillarGeo = new THREE.BoxGeometry(pSize, pHeight, pSize);
+            var pillarMat = new THREE.MeshStandardMaterial({ color: 0x1c1c30, roughness: 0.4 });
             
-            const barrelPosition = new THREE.Vector3();
-            weaponFrame.getWorldPosition(barrelPosition);
-            const destinationBeamVector = new THREE.Vector3();
-            hitDetectionRaycaster.ray.at(50, destinationBeamVector);
+            for (var i = 0; i < 14; i++) {
+                var pillar = new THREE.Mesh(pillarGeo, pillarMat);
+                pillar.position.set((Math.random() - 0.5) * 70, pHeight/2, (Math.random() - 0.5) * 70);
+                pillar.castShadow = true; pillar.receiveShadow = true;
+                scene.add(pillar);
+                pillars.push(pillar);
 
-            const activeHits = hitDetectionRaycaster.intersectObjects(enemies);
-            if (activeHits.length > 0) {
-                const shotTarget = activeHits.object;
-                destinationBeamVector.copy(activeHits.point);
-
-                // Target Hit Flash
-                shotTarget.material.color.setHex(0xffffff);
-                setTimeout(() => shotTarget.material.color.setHex(0xff3366), 70);
-
-                // Teleport Respawn
-                shotTarget.position.set((Math.random() - 0.5) * 80, 2, (Math.random() - 0.5) * 80);
-                
-                // Track Scores
-                killCount++;
-                document.getElementById('score-val').innerText = killCount;
-                triggerNotification("RIVAL DOWN +100");
+                var topGlowGeo = new THREE.BoxGeometry(pSize + 0.2, 0.3, pSize + 0.2);
+                var topGlowMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc });
+                var glowRing = new THREE.Mesh(topGlowGeo, topGlowMat);
+                glowRing.position.set(pillar.position.x, pHeight, pillar.position.z);
+                scene.add(glowRing);
             }
 
-            renderBulletTracerLine(barrelPosition, destinationBeamVector);
-        }
+            // --- Target Enemies Spawn ---
+            var botGeo = new THREE.BoxGeometry(2.5, 4, 2.5);
+            var botMat = new THREE.MeshStandardMaterial({ color: 0xff3366, roughness: 0.2 });
 
-        function renderBulletTracerLine(origin, endpoint) {
-            const pathPoints = [origin, endpoint];
-            const lineGeo = new THREE.BufferGeometry().setFromPoints(pathPoints);
-            const lineMat = new THREE.LineBasicMaterial({ color: 0x00ffcc, linewidth: 2 });
-            const laserLineMesh = new THREE.Line(lineGeo, lineMat);
-            scene.add(laserLineMesh);
-            setTimeout(() => scene.remove(laserLineMesh), 40);
-        }
+            function createEnemyBot() {
+                var bot = new THREE.Mesh(botGeo, botMat);
+                bot.position.set((Math.random() - 0.5) * 80, 2, (Math.random() - 0.5) * 80);
+                bot.castShadow = true;
+                bot.userData = { direction: Math.random() * Math.PI * 2, speed: 6 + Math.random() * 5 };
+                scene.add(bot);
+                enemies.push(bot);
+            }
+            for (var i = 0; i < 7; i++) createEnemyBot();
 
-        function triggerNotification(msg) {
-            const feed = document.getElementById('killfeed');
-            feed.innerText = msg;
-            setTimeout(() => { if(feed.innerText === msg) feed.innerText = ""; }, 1500);
-        }
+            // --- Weapon Design Attached directly to Camera view ---
+            camera.position.set(0, 3, 0);
+            
+            var weaponFrame = new THREE.Group();
+            var bodyMesh = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.9), new THREE.MeshStandardMaterial({ color: 0x222226 }));
+            var tipMesh = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.3), new THREE.MeshBasicMaterial({ color: 0x00ffcc }));
+            tipMesh.position.set(0, 0.06, -0.3);
+            weaponFrame.add(bodyMesh, tipMesh);
+            
+            weaponFrame.position.set(0.32, -0.32, -0.65);
+            camera.add(weaponFrame);
+            scene.add(camera);
 
-        // --- Continuous Physics Animation Frame ---
-        function runFrameEngine() {
-            requestAnimationFrame(runFrameEngine);
-            const timeDelta = Math.min(executionClock.getDelta(), 0.1);
+            // --- State Engine Tracker ---
+            var matchActive = false;
+            var killCount = 0;
+            var moveF = false, moveB = false, moveL = false, moveR = false;
+            var lookLeft = false, lookRight = false, lookUp = false, lookDown = false;
+            
+            var velocityVector = new THREE.Vector3();
+            var isGroundedState = true;
+            var verticalForce = 0;
+            var lookPitch = 0, lookYaw = 0;
+            var clock = new THREE.Clock();
 
-            if (matchActive) {
-                // Keyboard Camera Rotation Updates
-                const rotationSpeed = 1.8 * timeDelta;
-                if (lookLeft) lookYaw += rotationSpeed;
-                if (lookRight) lookYaw -= rotationSpeed;
-                if (lookUp) lookPitch += rotationSpeed;
-                if (lookDown) lookPitch -= rotationSpeed;
+            var lobbyScreen = document.getElementById('lobby');
+            function activateGame() {
+                matchActive = true;
+                lobbyScreen.style.display = 'none';
+            }
+            document.getElementById('start-match').addEventListener('click', activateGame);
 
-                // Clamp looking vertical matrix bounds
-                lookPitch = Math.max(-Math.PI / 2.3, Math.min(Math.PI / 2.3, lookPitch));
-                camera.rotation.set(lookPitch, lookYaw, 0, 'YXZ');
-
-                // Movement Decay Friction
-                velocityVector.x -= velocityVector.x * 12.0 * timeDelta;
-                velocityVector.z -= velocityVector.z * 12.0 * timeDelta;
-
-                const cameraLookDirection = new THREE.Vector3();
-                camera.getWorldDirection(cameraLookDirection);
-                cameraLookDirection.y = 0;
-                cameraLookDirection.normalize();
-
-                const cameraRightDirection = new THREE.Vector3().crossVectors(camera.up, cameraLookDirection).normalize();
-
-                if (moveF) velocityVector.addScaledVector(cameraLookDirection, 60 * timeDelta);
-                if (moveB) velocityVector.addScaledVector(cameraLookDirection, -60 * timeDelta);
-                if (moveL) velocityVector.addScaledVector(cameraRightDirection, 60 * timeDelta);
-                if (moveR) velocityVector.addScaledVector(cameraRightDirection, -60 * timeDelta);
-
-                camera.position.add(velocityVector);
-
-                // Gravity Fall Calculations
-                if (!isGroundedState) {
-                    verticalForce -= 35 * timeDelta; 
-                    camera.position.y += verticalForce * timeDelta;
-
-                    if (camera.position.y <= 3) {
-                        camera.position.y = 3;
-                        verticalForce = 0;
-                        isGroundedState = true;
-                    }
+            // --- Keyboard Controls Framework ---
+            document.addEventListener('keydown', function(e) {
+                if (!matchActive && e.code === 'Enter') {
+                    activateGame();
+                    return;
                 }
-            }
 
-            // Map Bounds Box Fallback Protection
-            if (camera.position.x > mapRadius/2 - 2) camera.position.x = mapRadius/2 - 2;
-            if (camera.position.x < -mapRadius/2 + 2) camera.position.x = -mapRadius/2 + 2;
-            if (camera.position.z > mapRadius/2 - 2) camera.position.z = mapRadius/2 - 2;
-            if (camera.position.z < -mapRadius/2 + 2) camera.position.z = -mapRadius/2 + 2;
+                if (e.code === 'KeyW') moveF = true;
+                if (e.code === 'KeyS') moveB = true;
+                if (e.code === 'KeyA') moveL = true;
+                if (e.code === 'KeyD') moveR = true;
 
-            // Enemy Target Navigation Logic
-            enemies.forEach(bot => {
-                bot.userData.direction += (Math.random() - 0.5) * 0.15;
-                bot.position.x += Math.cos(bot.userData.direction) * bot.userData.speed * timeDelta;
-                bot.position.z += Math.sin(bot.userData.direction) * bot.userData.speed * timeDelta;
+                if (e.code === 'ArrowLeft') lookLeft = true;
+                if (e.code === 'ArrowRight') lookRight = true;
+                if (e.code === 'ArrowUp') lookUp = true;
+                if (e.code === 'ArrowDown') lookDown = true;
 
-                // Wall Collisions Boundary Bounces
-                if (Math.abs(bot.position.x) > mapRadius/2 - 3) bot.userData.direction = Math.PI - bot.userData.direction;
-                if (Math.abs(bot.position.z) > mapRadius/2 - 3) bot.userData.direction = -bot.userData.direction;
+                if (e.code === 'Space' && isGroundedState && matchActive) {
+                    verticalForce = 13; 
+                    isGroundedState = false;
+                }
+
+                if (e.code === 'Enter' && matchActive) {
+                    executeWeaponFire();
+                }
             });
 
-            renderer.render(scene, camera);
-        }
+            document.addEventListener('keyup', function(e) {
+                if (e.code === 'KeyW') moveF = false;
+                if (e.code === 'KeyS') moveB = false;
+                if (e.code === 'KeyA') moveL = false;
+                if (e.code === 'KeyD') moveR = false;
 
-        // Window Resizing Scale Hook
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+                if (e.code === 'ArrowLeft') lookLeft = false;
+                if (e.code === 'ArrowRight') lookRight = false;
+                if (e.code === 'ArrowUp') lookUp = false;
+                if (e.code === 'ArrowDown') lookDown = false;
+            });
+
+            // --- Raycasting Shot Engine ---
+            var raycaster = new THREE.Raycaster();
+            var centerCoords = new THREE.Vector2(0, 0);
+
+            function executeWeaponFire() {
+                weaponFrame.position.z = -0.5;
+                weaponFrame.position.y = -0.28;
+                setTimeout(function() {
+                    weaponFrame.position.z = -0.65;
+                    weaponFrame.position.y = -0.32;
+                }, 60);
+
+                raycaster.setFromCamera(centerCoords, camera);
+                
+                var barrelPosition = new THREE.Vector3();
+                weaponFrame.getWorldPosition(barrelPosition);
+                var destinationBeamVector = new THREE.Vector3();
+                raycaster.ray.at(50, destinationBeamVector);
+
+                var activeHits = raycaster.intersectObjects(enemies);
+                if (activeHits.length > 0) {
+                    var shotTarget = activeHits[0].object;
+                    destinationBeamVector.copy(activeHits[0].point);
+
+                    shotTarget.material.color.setHex(0xffffff);
+                    (function(t) {
+                        setTimeout(function() { t.material.color.setHex(0xff3366); }, 70);
+                    })(shotTarget);
+
+                    shotTarget.position.set((Math.random() - 0.5) * 80, 2, (Math.random() - 0.5) * 80);
+                    
+                    killCount++;
+                    document.getElementById('score-val').innerText = killCount;
+                    triggerNotification("RIVAL DOWN +100");
+                }
+
+                renderBulletTracerLine(barrelPosition, destinationBeamVector);
+            }
+
+            function renderBulletTracerLine(origin, endpoint) {
+                var pathPoints = [origin, endpoint];
+                var lineGeo = new THREE.BufferGeometry().setFromPoints(pathPoints);
+                var lineMat = new THREE.LineBasicMaterial({ color: 0x00ffcc, linewidth: 2 });
+                var laserLineMesh = new THREE.Line(lineGeo, lineMat);
+                scene.add(laserLineMesh);
+                setTimeout(function() { scene.remove(laserLineMesh); }, 40);
+            }
+
+            function triggerNotification(msg) {
+                var feed = document.getElementById('killfeed');
+                feed.innerText = msg;
+                setTimeout(function() { if(feed.innerText === msg) feed.innerText = ""; }, 1500);
+            }
+
+            // --- Physics Animation System Frame Loop ---
+            function runFrameEngine() {
+                requestAnimationFrame(runFrameEngine);
+                var timeDelta = Math.min(clock.getDelta(), 0.1);
+
+                if (matchActive) {
+                    var rotationSpeed = 1.8 * timeDelta;
+                    if (lookLeft) lookYaw += rotationSpeed;
+                    if (lookRight) lookYaw -= rotationSpeed;
+                    if (lookUp) lookPitch += rotationSpeed;
+                    if (lookDown) lookPitch -= rotationSpeed;
+
+                    lookPitch = Math.max(-Math.PI / 2.3, Math.min(Math.PI / 2.3, lookPitch));
+                    camera.rotation.set(lookPitch, lookYaw, 0, 'YXZ');
+
+                    velocityVector.x -= velocityVector.x * 12.0 * timeDelta;
+                    velocityVector.z -= velocityVector.z * 12.0 * timeDelta;
+
+                    var cameraLookDirection = new THREE.Vector3();
+                    camera.getWorldDirection(cameraLookDirection);
+                    cameraLookDirection.y = 0;
+                    cameraLookDirection.normalize();
+
+                    var cameraRightDirection = new THREE.Vector3().crossVectors(camera.up, cameraLookDirection).normalize();
+
+                    if (moveF) velocityVector.addScaledVector(cameraLookDirection, 60 * timeDelta);
+                    if (moveB) velocityVector.addScaledVector(cameraLookDirection, -60 * timeDelta);
+                    if (moveL) velocityVector.addScaledVector(cameraRightDirection, 60 * timeDelta);
+                    if (moveR) velocityVector.addScaledVector(cameraRightDirection, -60 * timeDelta);
+
+                    camera.position.add(velocityVector);
+
+                    if (!isGroundedState) {
+                        verticalForce -= 35 * timeDelta; 
+                        camera.position.y += verticalForce * timeDelta;
+
+                        if (camera.position.y <= 3) {
+                            camera.position.y = 3;
+                            verticalForce = 0;
+                            isGroundedState = true;
+                        }
+                    }
+                }
+
+                // Map Boundaries Protection
+                if (camera.position.x > mapRadius/2 - 2) camera.position.x = mapRadius/2 - 2;
+                if (camera.position.x < -mapRadius/2 + 2) camera.position.x = -mapRadius/2 + 2;
+                if (camera.position.z > mapRadius/2 - 2) camera.position.z = mapRadius/2 - 2;
+                if (camera.position.z < -mapRadius/2 + 2) camera.position.z = -mapRadius/2 + 2;
+
+                // Move Bot Entities
+                enemies.forEach(function(bot) {
+                    bot.userData.direction += (Math.random() - 0.5) * 0.15;
+                    bot.position.x += Math.cos(bot.userData.direction) * bot.userData.speed * timeDelta;
+                    bot.position.z += Math.sin(bot.userData.direction) * bot.userData.speed * timeDelta;
+
+                    if (Math.abs(bot.position.x) > mapRadius/2 - 3) bot.userData.direction = Math.PI - bot.userData.direction;
+                    if (Math.abs(bot.position.z) > mapRadius/2 - 3) bot.userData.direction = -bot.userData.direction;
+                });
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', function() {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            runFrameEngine();
         });
-
-        runFrameEngine();
     </script>
 </body>
 </html>
