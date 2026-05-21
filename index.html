@@ -29,14 +29,14 @@
         .ch-v { width: 2px; height: 16px; left: 7px; top: 0; }
         .ch-h { width: 16px; height: 2px; left: 0; top: 7px; }
 
-        /* Rivals HUD */
+        /* Rivals Match HUD */
         #hud {
             position: absolute; bottom: 40px; left: 50%;
             transform: translateX(-50%); display: flex;
             gap: 30px; pointer-events: none; z-index: 10;
         }
         .stat-card {
-            background: linear-gradient(135deg, rgba(15,15,35,0.9) 0%, rgba(5,5,15,0.95) 100%);
+            background: linear-gradient(135deg, rgba(15,15,35,0.85) 0%, rgba(5,5,15,0.9) 100%);
             color: white; padding: 12px 30px; border-radius: 6px;
             border: 2px solid #2a2a4a; min-width: 160px; text-align: center;
             box-shadow: 0 8px 20px rgba(0,0,0,0.5);
@@ -69,9 +69,13 @@
             padding: 18px 60px; font-size: 24px; font-weight: 900;
             border-radius: 4px; cursor: pointer; letter-spacing: 1px;
             box-shadow: 0 0 25px rgba(0, 255, 204, 0.5);
+            transition: transform 0.1s, box-shadow 0.2s;
+        }
+        .deploy-btn:hover {
+            transform: scale(1.04); box-shadow: 0 0 40px rgba(0, 255, 204, 0.9);
         }
     </style>
-    <!-- Standard Global Script CDN for Maximum Compatibility -->
+    <!-- Stable CDN link for Three.js Graphics Engine -->
     <script src="https://cloudflare.com"></script>
 </head>
 <body>
@@ -91,15 +95,14 @@
     <div id="lobby">
         <h1 class="title">RIVALS NO-MOUSE</h1>
         <p class="controls-hint">
-            <b>WASD</b> = Walk around the arena <br>
-            <b>ARROW KEYS</b> = Look & Aim Camera <br>
+            <b>WASD</b> = Walk & Strafe <br>
+            <b>ARROW KEYS</b> = Aim Camera <br>
             <b>SPACEBAR</b> = Jump | <b>ENTER KEY</b> = Shoot Weapon
         </p>
-        <button class="deploy-btn" id="start-match">PRESS ENTER TO PLAY</button>
+        <button class="deploy-btn" id="lock-target">DEPLOY MATCH</button>
     </div>
 
     <script>
-        // Use classic global THREE engine scope to bypass GitHub's module rules
         window.addEventListener('load', function() {
             // --- Core Scene Engine Setup ---
             var scene = new THREE.Scene();
@@ -112,14 +115,14 @@
             renderer.shadowMap.enabled = true;
             document.body.appendChild(renderer.domElement);
 
-            // --- Lighting ---
+            // --- Arena Level Environment Lighting ---
             var sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
             sunLight.position.set(40, 60, 20);
             sunLight.castShadow = true;
             scene.add(sunLight);
             scene.add(new THREE.AmbientLight(0x1a1a3a, 1.2));
 
-            // --- Build Arena Floor ---
+            // --- Build Roblox Neon Map Grid ---
             var mapRadius = 100;
             var floorGeo = new THREE.PlaneGeometry(mapRadius, mapRadius);
             var floorMat = new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 0.7 });
@@ -153,7 +156,7 @@
                 scene.add(glowRing);
             }
 
-            // --- Target Enemies Spawn ---
+            // --- Target Enemies Spawn Configuration ---
             var botGeo = new THREE.BoxGeometry(2.5, 4, 2.5);
             var botMat = new THREE.MeshStandardMaterial({ color: 0xff3366, roughness: 0.2 });
 
@@ -167,7 +170,7 @@
             }
             for (var i = 0; i < 7; i++) createEnemyBot();
 
-            // --- Weapon Design Attached directly to Camera view ---
+            // --- Weapon & Camera Layout ---
             camera.position.set(0, 3, 0);
             
             var weaponFrame = new THREE.Group();
@@ -180,7 +183,7 @@
             camera.add(weaponFrame);
             scene.add(camera);
 
-            // --- State Engine Tracker ---
+            // --- Gameplay Controller Variables ---
             var matchActive = false;
             var killCount = 0;
             var moveF = false, moveB = false, moveL = false, moveR = false;
@@ -192,17 +195,18 @@
             var lookPitch = 0, lookYaw = 0;
             var clock = new THREE.Clock();
 
+            // --- No-Mouse Menu Deploy Bypass Handler ---
             var lobbyScreen = document.getElementById('lobby');
-            function activateGame() {
+            function launchMatch() {
                 matchActive = true;
                 lobbyScreen.style.display = 'none';
             }
-            document.getElementById('start-match').addEventListener('click', activateGame);
+            document.getElementById('lock-target').addEventListener('click', launchMatch);
 
-            // --- Keyboard Controls Framework ---
+            // --- Keyboard Movement and Camera Listeners ---
             document.addEventListener('keydown', function(e) {
                 if (!matchActive && e.code === 'Enter') {
-                    activateGame();
+                    launchMatch();
                     return;
                 }
 
@@ -238,7 +242,7 @@
                 if (e.code === 'ArrowDown') lookDown = false;
             });
 
-            // --- Raycasting Shot Engine ---
+            // --- Raycasting Weapon Shooting System ---
             var raycaster = new THREE.Raycaster();
             var centerCoords = new THREE.Vector2(0, 0);
 
@@ -259,12 +263,12 @@
 
                 var activeHits = raycaster.intersectObjects(enemies);
                 if (activeHits.length > 0) {
-                    var shotTarget = activeHits[0].object;
-                    destinationBeamVector.copy(activeHits[0].point);
+                    var shotTarget = activeHits.object;
+                    destinationBeamVector.copy(activeHits.point);
 
                     shotTarget.material.color.setHex(0xffffff);
-                    (function(t) {
-                        setTimeout(function() { t.material.color.setHex(0xff3366); }, 70);
+                    (function(target) {
+                        setTimeout(function() { target.material.color.setHex(0xff3366); }, 70);
                     })(shotTarget);
 
                     shotTarget.position.set((Math.random() - 0.5) * 80, 2, (Math.random() - 0.5) * 80);
@@ -292,7 +296,7 @@
                 setTimeout(function() { if(feed.innerText === msg) feed.innerText = ""; }, 1500);
             }
 
-            // --- Physics Animation System Frame Loop ---
+            // --- Continuous Physics Animation Frame ---
             function runFrameEngine() {
                 requestAnimationFrame(runFrameEngine);
                 var timeDelta = Math.min(clock.getDelta(), 0.1);
@@ -336,13 +340,13 @@
                     }
                 }
 
-                // Map Boundaries Protection
+                // Map Bounds Box Fallback Protection
                 if (camera.position.x > mapRadius/2 - 2) camera.position.x = mapRadius/2 - 2;
                 if (camera.position.x < -mapRadius/2 + 2) camera.position.x = -mapRadius/2 + 2;
                 if (camera.position.z > mapRadius/2 - 2) camera.position.z = mapRadius/2 - 2;
                 if (camera.position.z < -mapRadius/2 + 2) camera.position.z = -mapRadius/2 + 2;
 
-                // Move Bot Entities
+                // Enemy Target Navigation Logic
                 enemies.forEach(function(bot) {
                     bot.userData.direction += (Math.random() - 0.5) * 0.15;
                     bot.position.x += Math.cos(bot.userData.direction) * bot.userData.speed * timeDelta;
