@@ -3,214 +3,243 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RIVALS Arena</title>
+    <title>3D Build & Shoot - Keyboard Only</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body, html {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #0b0c16;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            user-select: none;
-        }
-
-        /* Menu Screen Layout */
-        #menu-screen {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle, #101428 0%, #05060b 100%);
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 10;
-        }
-
-        /* Neon Title Style */
-        .title {
-            font-size: 4rem;
-            font-weight: 900;
-            color: #ffffff;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-bottom: 20px;
-            text-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc, 0 0 40px #00ffcc;
-        }
-
-        /* Controls Instructions */
-        .controls {
-            font-size: 0.9rem;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 40px;
-        }
-
-        /* Deploy Match Neon Button */
-        #deploy-btn {
-            background-color: #00ffcc;
-            color: #05060b;
-            border: none;
-            padding: 15px 40px;
-            font-size: 1.2rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 0 15px rgba(0, 255, 204, 0.6);
-        }
-
-        #deploy-btn:hover {
-            background-color: #ffffff;
-            box-shadow: 0 0 25px rgba(255, 255, 255, 0.9);
-            transform: scale(1.05);
-        }
-
-        /* Game Screen Area */
-        #game-screen {
-            display: none;
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 1;
-        }
-
-        #gameCanvas {
-            width: 100%;
-            height: 100%;
-            background-color: #0b0c16;
-            display: block;
-        }
-
-        /* HUD overlay */
-        #hud {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: #00ffcc;
-            font-size: 1.2rem;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            pointer-events: none;
-            text-shadow: 0 0 5px #00ffcc;
-        }
+        body { margin: 0; overflow: hidden; font-family: sans-serif; background: #000; }
+        #canvas-container { width: 100vw; height: 100vh; }
+        #ui { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 10px; color: white; pointer-events: none; }
+        .slot { border: 2px solid #555; padding: 10px; border-radius: 5px; text-align: center; width: 110px; }
+        .active { border-color: #00ffcc; background: rgba(0,255,204,0.2); }
+        #instructions { position: absolute; top: 20px; left: 20px; color: white; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 5px; pointer-events: none; line-height: 1.4; }
     </style>
+    <!-- Include Three.js for 3D graphics -->
+    <script src="https://cloudflare.com"></script>
 </head>
 <body>
 
-    <!-- MAIN MENU SCREEN -->
-    <div id="menu-screen">
-        <h1 class="title">RIVALS Arena</h1>
-        <p class="controls">MOUSE = Aim & Shoot | WASD = Move | SPACE = Jump</p>
-        <button id="deploy-btn">DEPLOY MATCH</button>
+    <div id="instructions">
+        <h3>⌨️ Keyboard Controls:</h3>
+        <strong>W, A, S, D</strong> - Move Player<br>
+        <strong>← / → Arrow Keys</strong> - Look Left / Right<br>
+        <strong>↑ / ↓ Arrow Keys</strong> - Look Up / Down<br>
+        <strong>SPACEBAR</strong> - Shoot Weapon / Place Ramp<br>
+        <strong>Key 1</strong> - Equip Rivals Blaster<br>
+        <strong>Key 2</strong> - Equip Fortnite Ramp<br>
+        <strong>Key J</strong> - Jump
     </div>
 
-    <!-- GAME ARENA SCREEN -->
-    <div id="game-screen">
-        <div id="hud">Match Live - Use WASD keys to move</div>
-        <canvas id="gameCanvas"></canvas>
+    <div id="ui">
+        <div id="slot-1" class="slot active">1: Blaster</div>
+        <div id="slot-2" class="slot">2: Ramp Build</div>
     </div>
 
-    <!-- GAME ENGINE SCRIPT -->
+    <div id="canvas-container"></div>
+
     <script>
-        // Use window.onload to guarantee everything is built before starting
-        window.onload = function() {
-            const deployBtn = document.getElementById("deploy-btn");
-            const menuScreen = document.getElementById("menu-screen");
-            const gameScreen = document.getElementById("game-screen");
-            const canvas = document.getElementById("gameCanvas");
-            const ctx = canvas.getContext("2d");
+        // --- 1. SETUP GAME WORLD ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a2e);
+        scene.fog = new THREE.FogExp2(0x1a1a2e, 0.015);
 
-            // Setup the canvas dimensions
-            function resizeCanvas() {
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight;
-            }
-            resizeCanvas();
-            window.addEventListener("resize", resizeCanvas);
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        container.appendChild(renderer.domElement);
 
-            // Player State Data
-            const player = {
-                x: window.innerWidth / 2 - 20,
-                y: window.innerHeight / 2 - 20,
-                size: 40,
-                speed: 7,
-                color: "#00ffcc"
-            };
+        // Lights
+        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(20, 40, 20);
+        scene.add(dirLight);
 
-            // Movement Key Tracker
-            const keys = { w: false, a: false, s: false, d: false };
+        // Grid Floor
+        const floorGeo = new THREE.PlaneGeometry(200, 200);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x111116, roughness: 0.8 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        scene.add(floor);
 
-            // Input Event Listeners
-            window.addEventListener("keydown", (e) => {
-                const key = e.key.toLowerCase();
-                if (key in keys) keys[key] = true;
-            });
+        const grid = new THREE.GridHelper(200, 50, 0x4e54c8, 0x222233);
+        grid.position.y = 0.01;
+        scene.add(grid);
 
-            window.addEventListener("keyup", (e) => {
-                const key = e.key.toLowerCase();
-                if (key in keys) keys[key] = false;
-            });
+        // --- 2. PLAYER & MOVEMENT VARIABLES ---
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, canJump = true;
+        let lookLeft = false, lookRight = false, lookUp = false, lookDown = false;
+        
+        let velocity = new THREE.Vector3();
+        let direction = new THREE.Vector3();
+        let currentMode = 1; 
+        const builds = [];
+        const projectiles = [];
+        
+        // Custom camera pitch/yaw system to avoid mouse lock math issues
+        let cameraYaw = 0;
+        let cameraPitch = 0;
 
-            // Start Button Click Action
-            deployBtn.addEventListener("click", () => {
-                menuScreen.style.display = "none";
-                gameScreen.style.display = "block";
+        camera.position.set(0, 2, 5);
+
+        // Keyboard Event Listeners
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'KeyW') moveForward = true;
+            if (e.code === 'KeyS') moveBackward = true;
+            if (e.code === 'KeyA') moveLeft = true;
+            if (e.code === 'KeyD') moveRight = true;
+            
+            if (e.code === 'ArrowLeft') lookLeft = true;
+            if (e.code === 'ArrowRight') lookRight = true;
+            if (e.code === 'ArrowUp') lookUp = true;
+            if (e.code === 'ArrowDown') lookDown = true;
+
+            if (e.code === 'KeyJ' && canJump) { velocity.y += 12; canJump = false; }
+            if (e.code === 'Digit1') switchMode(1);
+            if (e.code === 'Digit2') switchMode(2);
+            
+            if (e.code === 'Space') useActiveItem();
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'KeyW') moveForward = false;
+            if (e.code === 'KeyS') moveBackward = false;
+            if (e.code === 'KeyA') moveLeft = false;
+            if (e.code === 'KeyD') moveRight = false;
+            
+            if (e.code === 'ArrowLeft') lookLeft = false;
+            if (e.code === 'ArrowRight') lookRight = false;
+            if (e.code === 'ArrowUp') lookUp = false;
+            if (e.code === 'ArrowDown') lookDown = false;
+        });
+
+        function switchMode(mode) {
+            currentMode = mode;
+            document.getElementById('slot-1').className = mode === 1 ? 'slot active' : 'slot';
+            document.getElementById('slot-2').className = mode === 2 ? 'slot active' : 'slot';
+            weaponMesh.visible = (mode === 1);
+            previewRamp.visible = (mode === 2);
+        }
+
+        // --- 3. CREATING GUN & RAMP MODELS ---
+        const gunGeo = new THREE.BoxGeometry(0.2, 0.2, 0.8);
+        const gunMat = new THREE.MeshStandardMaterial({ color: 0xff0055 }); 
+        const weaponMesh = new THREE.Mesh(gunGeo, gunMat);
+        weaponMesh.position.set(0.3, -0.3, -0.6);
+        camera.add(weaponMesh);
+        scene.add(camera);
+
+        const rampGeo = new THREE.BoxGeometry(4, 0.2, 5.6);
+        rampGeo.rotateX(Math.PI / 6); 
+        const previewMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc, wireframe: true, transparent: true, opacity: 0.5 });
+        const previewRamp = new THREE.Mesh(rampGeo, previewMat);
+        previewRamp.visible = false;
+        scene.add(previewRamp);
+
+        // --- 4. ACTION FUNCTION (SPACEBAR CLICK) ---
+        function useActiveItem() {
+            if (currentMode === 1) {
+                // Shoot weapon
+                const laserGeo = new THREE.SphereGeometry(0.15, 8, 8);
+                const laserMat = new THREE.MeshBasicMaterial({ color: 0xff0055 });
+                const laser = new THREE.Mesh(laserGeo, laserMat);
                 
-                // Recalculate dimensions right as match opens
-                resizeCanvas();
-                player.x = canvas.width / 2 - player.size / 2;
-                player.y = canvas.height / 2 - player.size / 2;
+                const pLocal = new THREE.Vector3(0.3, -0.3, -1);
+                pLocal.applyMatrix4(camera.matrixWorld);
+                laser.position.copy(pLocal);
                 
-                // Fire up the continuous engine loop
-                requestAnimationFrame(gameLoop);
-            });
-
-            // Physics Update Engine
-            function update() {
-                if (keys.w && player.y > 0) player.y -= player.speed;
-                if (keys.s && player.y < canvas.height - player.size) player.y += player.speed;
-                if (keys.a && player.x > 0) player.x -= player.speed;
-                if (keys.d && player.x < canvas.width - player.size) player.x += player.speed;
-            }
-
-            // Screen Draw Engine
-            function render() {
-                // Clear out previous frame artifacts
-                ctx.fillStyle = "#0b0c16";
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                // Apply neon laser glow effects to player
-                ctx.shadowBlur = 20;
-                ctx.shadowColor = player.color;
-                ctx.fillStyle = player.color;
-                ctx.fillRect(player.x, player.y, player.size, player.size);
+                const dir = new THREE.Vector3();
+                camera.getWorldDirection(dir);
+                laser.userData = { dir: dir, speed: 1.5, life: 60 };
                 
-                // Turn off shadow blur processing for faster rendering performance
-                ctx.shadowBlur = 0;
+                scene.add(laser);
+                projectiles.push(laser);
+            } 
+            else if (currentMode === 2) {
+                // Place Ramp Build
+                const solidMat = new THREE.MeshStandardMaterial({ color: 0x00a8ff, roughness: 0.4, transparent: true, opacity: 0.8 });
+                const builtRamp = new THREE.Mesh(rampGeo.clone(), solidMat);
+                builtRamp.position.copy(previewRamp.position);
+                builtRamp.rotation.copy(previewRamp.rotation);
+                scene.add(builtRamp);
+                builds.push(builtRamp);
+            }
+        }
+
+        // --- 5. GAME ENGINE LOOP ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+
+            // Handle Camera Rotation via Arrow Keys
+            const rotationSpeed = 2.0 * delta;
+            if (lookLeft) cameraYaw += rotationSpeed;
+            if (lookRight) cameraYaw -= rotationSpeed;
+            if (lookUp) cameraPitch = Math.min(Math.PI / 2.5, cameraPitch + rotationSpeed);
+            if (lookDown) cameraPitch = Math.max(-Math.PI / 2.5, cameraPitch - rotationSpeed);
+
+            // Apply rotation order to stop visual glitching
+            camera.rotation.y = cameraYaw;
+            camera.rotation.x = cameraPitch;
+            camera.rotation.order = "YXZ";
+
+            // Player Physics & Movement 
+            velocity.x -= velocity.x * 10.0 * delta;
+            velocity.z -= velocity.z * 10.0 * delta;
+            velocity.y -= 9.8 * 3.0 * delta; 
+
+            direction.z = Number(moveForward) - Number(moveBackward);
+            direction.x = Number(moveRight) - Number(moveLeft);
+            direction.normalize();
+
+            if (moveForward || moveBackward) velocity.z -= direction.z * 150.0 * delta;
+            if (moveLeft || moveRight) velocity.x -= direction.x * 150.0 * delta;
+
+            camera.translateX(-velocity.x * delta);
+            camera.translateZ(velocity.z * delta);
+            camera.position.y += velocity.y * delta;
+
+            // Stop player from falling through the floor
+            if (camera.position.y < 2) {
+                velocity.y = 0;
+                camera.position.y = 2;
+                canJump = true;
             }
 
-            // Loop Orchestrator
-            function gameLoop() {
-                update();
-                render();
-                requestAnimationFrame(gameLoop);
+            // Keep track of build item preview positioning
+            if (currentMode === 2) {
+                const forwardDir = new THREE.Vector3();
+                camera.getWorldDirection(forwardDir);
+                forwardDir.y = 0; 
+                forwardDir.normalize();
+                
+                previewRamp.position.copy(camera.position).addScaledVector(forwardDir, 6);
+                previewRamp.position.y = Math.floor(previewRamp.position.y / 2) * 2 + 1.2; 
+                previewRamp.rotation.y = cameraYaw;
             }
-        };
+
+            // Flying laser mechanics
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const proj = projectiles[i];
+                proj.position.addScaledVector(proj.userData.dir, proj.userData.speed);
+                proj.userData.life--;
+                if (proj.userData.life <= 0) {
+                    scene.remove(proj);
+                    projectiles.splice(i, 1);
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
