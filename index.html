@@ -3,370 +3,241 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roblox Rivals No-Mouse Edition</title>
+    <title>RIVALS Arena</title>
     <style>
-        * { box-sizing: border-box; }
-        body, html {
-            margin: 0; padding: 0;
-            width: 100%; height: 100%;
-            overflow: hidden; background-color: #0b0b16;
-            font-family: 'Arial Black', Gadget, sans-serif;
-            user-select: none;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        canvas { display: block; width: 100%; height: 100%; }
-        
-        /* Roblox Style Crosshair */
-        #crosshair {
-            position: absolute; top: 50%; left: 50%;
-            width: 16px; height: 16px;
-            transform: translate(-50%, -50%);
-            pointer-events: none; z-index: 10;
+        body {
+            background-color: #0b0c16;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
         }
-        .ch-line {
-            position: absolute; background: #00ffcc;
-            box-shadow: 0 0 4px #00ffcc;
-        }
-        .ch-v { width: 2px; height: 16px; left: 7px; top: 0; }
-        .ch-h { width: 16px; height: 2px; left: 0; top: 7px; }
-
-        /* Rivals Match HUD */
-        #hud {
-            position: absolute; bottom: 40px; left: 50%;
-            transform: translateX(-50%); display: flex;
-            gap: 30px; pointer-events: none; z-index: 10;
-        }
-        .stat-card {
-            background: linear-gradient(135deg, rgba(15,15,35,0.85) 0%, rgba(5,5,15,0.9) 100%);
-            color: white; padding: 12px 30px; border-radius: 6px;
-            border: 2px solid #2a2a4a; min-width: 160px; text-align: center;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
-        }
-        .stat-val { font-size: 28px; font-weight: 900; margin-top: 5px; }
-        #score-val { color: #00ffcc; text-shadow: 0 0 8px rgba(0,255,204,0.5); }
-
-        #killfeed {
-            position: absolute; top: 30px; right: 30px;
-            color: #00ffcc; font-size: 20px; font-weight: 900;
-            text-shadow: 0 0 10px rgba(0,255,204,0.6);
-            pointer-events: none; z-index: 10;
-        }
-
-        /* Keyboard Active Menu Overlay */
-        #lobby {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle at center, #14142b 0%, #070712 100%);
-            display: flex; flex-direction: column; justify-content: center;
-            align-items: center; z-index: 100; color: white;
-        }
-        .title {
-            font-size: 56px; color: #ffffff; margin: 0 0 10px 0;
-            text-shadow: 0 0 15px #00ffcc, 0 0 30px #00ffcc; letter-spacing: 4px;
+        /* Menu View Layout */
+        #menu-container {
             text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
         }
-        .controls-hint { font-size: 18px; color: #a1a1d4; margin-bottom: 40px; font-family: sans-serif; text-align: center; line-height: 1.6; }
-        .deploy-btn {
-            background: #00ffcc; color: #050510; border: none;
-            padding: 18px 60px; font-size: 24px; font-weight: 900;
-            border-radius: 4px; cursor: pointer; letter-spacing: 1px;
-            box-shadow: 0 0 25px rgba(0, 255, 204, 0.5);
-            transition: transform 0.1s, box-shadow 0.2s;
+        h1 {
+            color: #ffffff;
+            font-size: 3.5rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 20px #00ffcc, 0 0 40px #00ffcc;
         }
-        .deploy-btn:hover {
-            transform: scale(1.04); box-shadow: 0 0 40px rgba(0, 255, 204, 0.9);
+        .controls-hint {
+            color: #6a6f8a;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        #deploy-btn {
+            background-color: #00ffcc;
+            color: #0b0c16;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
+            transition: all 0.2s ease;
+        }
+        #deploy-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(0, 255, 204, 0.8);
+        }
+        /* Game Screen Canvas Layout */
+        canvas {
+            display: none; /* Hidden until deploy match is clicked */
+            background: #05060a;
+            width: 100vw;
+            height: 100vh;
         }
     </style>
-    <!-- Stable CDN link for Three.js Graphics Engine -->
-    <script src="https://cloudflare.com"></script>
 </head>
 <body>
 
-    <div id="crosshair">
-        <div class="ch-line ch-v"></div>
-        <div class="ch-line ch-h"></div>
-    </div>
-    
-    <div id="hud">
-        <div class="stat-card"><div>ELIMINATIONS</div><div id="score-val" class="stat-val">0</div></div>
-        <div class="stat-card"><div>HEALTH</div><div style="color: #ff3366;" class="stat-val">100</div></div>
+    <!-- 1. Menu Screen -->
+    <div id="menu-container">
+        <h1>RIVALS Arena</h1>
+        <p class="controls-hint">MOUSE = Aim & Shoot | WASD = Move | SPACE = Jump</p>
+        <button id="deploy-btn">DEPLOY MATCH</button>
     </div>
 
-    <div id="killfeed"></div>
-
-    <div id="lobby">
-        <h1 class="title">RIVALS NO-MOUSE</h1>
-        <p class="controls-hint">
-            <b>WASD</b> = Walk & Strafe <br>
-            <b>ARROW KEYS</b> = Aim Camera <br>
-            <b>SPACEBAR</b> = Jump | <b>ENTER KEY</b> = Shoot Weapon
-        </p>
-        <button class="deploy-btn" id="lock-target">DEPLOY MATCH</button>
-    </div>
+    <!-- 2. Game View Screen -->
+    <canvas id="gameCanvas"></canvas>
 
     <script>
-        window.addEventListener('load', function() {
-            // --- Core Scene Engine Setup ---
-            var scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x060610);
-            scene.fog = new THREE.FogExp2(0x060610, 0.02);
+        // DOM Elements
+        const menuContainer = document.getElementById('menu-container');
+        const deployBtn = document.getElementById('deploy-btn');
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-            var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            var renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.shadowMap.enabled = true;
-            document.body.appendChild(renderer.domElement);
+        // State Tracking for Keyboard and Mouse Input
+        const keys = { w: false, a: false, s: false, d: false, space: false };
+        const mouse = { x: 0, y: 0 };
 
-            // --- Arena Level Environment Lighting ---
-            var sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
-            sunLight.position.set(40, 60, 20);
-            sunLight.castShadow = true;
-            scene.add(sunLight);
-            scene.add(new THREE.AmbientLight(0x1a1a3a, 1.2));
+        // Player Entity Structure
+        const player = {
+            x: 100,
+            y: 100,
+            radius: 20,
+            speed: 5,
+            color: '#00ffcc'
+        };
 
-            // --- Build Roblox Neon Map Grid ---
-            var mapRadius = 100;
-            var floorGeo = new THREE.PlaneGeometry(mapRadius, mapRadius);
-            var floorMat = new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 0.7 });
-            var floor = new THREE.Mesh(floorGeo, floorMat);
-            floor.rotation.x = -Math.PI / 2;
-            floor.receiveShadow = true;
-            scene.add(floor);
-
-            var gridDisplay = new THREE.GridHelper(mapRadius, 50, 0x00ffcc, 0x22223b);
-            gridDisplay.position.y = 0.02;
-            scene.add(gridDisplay);
-
-            // Strategic Cover Pillars
-            var enemies = [];
-            var pillars = [];
-            var pSize = 4; var pHeight = 12;
-            var pillarGeo = new THREE.BoxGeometry(pSize, pHeight, pSize);
-            var pillarMat = new THREE.MeshStandardMaterial({ color: 0x1c1c30, roughness: 0.4 });
+        // Event: "Deploy Match" Clicked
+        deployBtn.addEventListener('click', () => {
+            // Hide the UI menu interface
+            menuContainer.style.display = 'none';
             
-            for (var i = 0; i < 14; i++) {
-                var pillar = new THREE.Mesh(pillarGeo, pillarMat);
-                pillar.position.set((Math.random() - 0.5) * 70, pHeight/2, (Math.random() - 0.5) * 70);
-                pillar.castShadow = true; pillar.receiveShadow = true;
-                scene.add(pillar);
-                pillars.push(pillar);
-
-                var topGlowGeo = new THREE.BoxGeometry(pSize + 0.2, 0.3, pSize + 0.2);
-                var topGlowMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc });
-                var glowRing = new THREE.Mesh(topGlowGeo, topGlowMat);
-                glowRing.position.set(pillar.position.x, pHeight, pillar.position.z);
-                scene.add(glowRing);
-            }
-
-            // --- Target Enemies Spawn Configuration ---
-            var botGeo = new THREE.BoxGeometry(2.5, 4, 2.5);
-            var botMat = new THREE.MeshStandardMaterial({ color: 0xff3366, roughness: 0.2 });
-
-            function createEnemyBot() {
-                var bot = new THREE.Mesh(botGeo, botMat);
-                bot.position.set((Math.random() - 0.5) * 80, 2, (Math.random() - 0.5) * 80);
-                bot.castShadow = true;
-                bot.userData = { direction: Math.random() * Math.PI * 2, speed: 6 + Math.random() * 5 };
-                scene.add(bot);
-                enemies.push(bot);
-            }
-            for (var i = 0; i < 7; i++) createEnemyBot();
-
-            // --- Weapon & Camera Layout ---
-            camera.position.set(0, 3, 0);
+            // Activate and resize game canvas
+            canvas.style.display = 'block';
+            resizeCanvas();
             
-            var weaponFrame = new THREE.Group();
-            var bodyMesh = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.9), new THREE.MeshStandardMaterial({ color: 0x222226 }));
-            var tipMesh = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.3), new THREE.MeshBasicMaterial({ color: 0x00ffcc }));
-            tipMesh.position.set(0, 0.06, -0.3);
-            weaponFrame.add(bodyMesh, tipMesh);
-            
-            weaponFrame.position.set(0.32, -0.32, -0.65);
-            camera.add(weaponFrame);
-            scene.add(camera);
-
-            // --- Gameplay Controller Variables ---
-            var matchActive = false;
-            var killCount = 0;
-            var moveF = false, moveB = false, moveL = false, moveR = false;
-            var lookLeft = false, lookRight = false, lookUp = false, lookDown = false;
-            
-            var velocityVector = new THREE.Vector3();
-            var isGroundedState = true;
-            var verticalForce = 0;
-            var lookPitch = 0, lookYaw = 0;
-            var clock = new THREE.Clock();
-
-            // --- No-Mouse Menu Deploy Bypass Handler ---
-            var lobbyScreen = document.getElementById('lobby');
-            function launchMatch() {
-                matchActive = true;
-                lobbyScreen.style.display = 'none';
-            }
-            document.getElementById('lock-target').addEventListener('click', launchMatch);
-
-            // --- Keyboard Movement and Camera Listeners ---
-            document.addEventListener('keydown', function(e) {
-                if (!matchActive && e.code === 'Enter') {
-                    launchMatch();
-                    return;
-                }
-
-                if (e.code === 'KeyW') moveF = true;
-                if (e.code === 'KeyS') moveB = true;
-                if (e.code === 'KeyA') moveL = true;
-                if (e.code === 'KeyD') moveR = true;
-
-                if (e.code === 'ArrowLeft') lookLeft = true;
-                if (e.code === 'ArrowRight') lookRight = true;
-                if (e.code === 'ArrowUp') lookUp = true;
-                if (e.code === 'ArrowDown') lookDown = true;
-
-                if (e.code === 'Space' && isGroundedState && matchActive) {
-                    verticalForce = 13; 
-                    isGroundedState = false;
-                }
-
-                if (e.code === 'Enter' && matchActive) {
-                    executeWeaponFire();
-                }
-            });
-
-            document.addEventListener('keyup', function(e) {
-                if (e.code === 'KeyW') moveF = false;
-                if (e.code === 'KeyS') moveB = false;
-                if (e.code === 'KeyA') moveL = false;
-                if (e.code === 'KeyD') moveR = false;
-
-                if (e.code === 'ArrowLeft') lookLeft = false;
-                if (e.code === 'ArrowRight') lookRight = false;
-                if (e.code === 'ArrowUp') lookUp = false;
-                if (e.code === 'ArrowDown') lookDown = false;
-            });
-
-            // --- Raycasting Weapon Shooting System ---
-            var raycaster = new THREE.Raycaster();
-            var centerCoords = new THREE.Vector2(0, 0);
-
-            function executeWeaponFire() {
-                weaponFrame.position.z = -0.5;
-                weaponFrame.position.y = -0.28;
-                setTimeout(function() {
-                    weaponFrame.position.z = -0.65;
-                    weaponFrame.position.y = -0.32;
-                }, 60);
-
-                raycaster.setFromCamera(centerCoords, camera);
-                
-                var barrelPosition = new THREE.Vector3();
-                weaponFrame.getWorldPosition(barrelPosition);
-                var destinationBeamVector = new THREE.Vector3();
-                raycaster.ray.at(50, destinationBeamVector);
-
-                var activeHits = raycaster.intersectObjects(enemies);
-                if (activeHits.length > 0) {
-                    var shotTarget = activeHits.object;
-                    destinationBeamVector.copy(activeHits.point);
-
-                    shotTarget.material.color.setHex(0xffffff);
-                    (function(target) {
-                        setTimeout(function() { target.material.color.setHex(0xff3366); }, 70);
-                    })(shotTarget);
-
-                    shotTarget.position.set((Math.random() - 0.5) * 80, 2, (Math.random() - 0.5) * 80);
-                    
-                    killCount++;
-                    document.getElementById('score-val').innerText = killCount;
-                    triggerNotification("RIVAL DOWN +100");
-                }
-
-                renderBulletTracerLine(barrelPosition, destinationBeamVector);
-            }
-
-            function renderBulletTracerLine(origin, endpoint) {
-                var pathPoints = [origin, endpoint];
-                var lineGeo = new THREE.BufferGeometry().setFromPoints(pathPoints);
-                var lineMat = new THREE.LineBasicMaterial({ color: 0x00ffcc, linewidth: 2 });
-                var laserLineMesh = new THREE.Line(lineGeo, lineMat);
-                scene.add(laserLineMesh);
-                setTimeout(function() { scene.remove(laserLineMesh); }, 40);
-            }
-
-            function triggerNotification(msg) {
-                var feed = document.getElementById('killfeed');
-                feed.innerText = msg;
-                setTimeout(function() { if(feed.innerText === msg) feed.innerText = ""; }, 1500);
-            }
-
-            // --- Continuous Physics Animation Frame ---
-            function runFrameEngine() {
-                requestAnimationFrame(runFrameEngine);
-                var timeDelta = Math.min(clock.getDelta(), 0.1);
-
-                if (matchActive) {
-                    var rotationSpeed = 1.8 * timeDelta;
-                    if (lookLeft) lookYaw += rotationSpeed;
-                    if (lookRight) lookYaw -= rotationSpeed;
-                    if (lookUp) lookPitch += rotationSpeed;
-                    if (lookDown) lookPitch -= rotationSpeed;
-
-                    lookPitch = Math.max(-Math.PI / 2.3, Math.min(Math.PI / 2.3, lookPitch));
-                    camera.rotation.set(lookPitch, lookYaw, 0, 'YXZ');
-
-                    velocityVector.x -= velocityVector.x * 12.0 * timeDelta;
-                    velocityVector.z -= velocityVector.z * 12.0 * timeDelta;
-
-                    var cameraLookDirection = new THREE.Vector3();
-                    camera.getWorldDirection(cameraLookDirection);
-                    cameraLookDirection.y = 0;
-                    cameraLookDirection.normalize();
-
-                    var cameraRightDirection = new THREE.Vector3().crossVectors(camera.up, cameraLookDirection).normalize();
-
-                    if (moveF) velocityVector.addScaledVector(cameraLookDirection, 60 * timeDelta);
-                    if (moveB) velocityVector.addScaledVector(cameraLookDirection, -60 * timeDelta);
-                    if (moveL) velocityVector.addScaledVector(cameraRightDirection, 60 * timeDelta);
-                    if (moveR) velocityVector.addScaledVector(cameraRightDirection, -60 * timeDelta);
-
-                    camera.position.add(velocityVector);
-
-                    if (!isGroundedState) {
-                        verticalForce -= 35 * timeDelta; 
-                        camera.position.y += verticalForce * timeDelta;
-
-                        if (camera.position.y <= 3) {
-                            camera.position.y = 3;
-                            verticalForce = 0;
-                            isGroundedState = true;
-                        }
-                    }
-                }
-
-                // Map Bounds Box Fallback Protection
-                if (camera.position.x > mapRadius/2 - 2) camera.position.x = mapRadius/2 - 2;
-                if (camera.position.x < -mapRadius/2 + 2) camera.position.x = -mapRadius/2 + 2;
-                if (camera.position.z > mapRadius/2 - 2) camera.position.z = mapRadius/2 - 2;
-                if (camera.position.z < -mapRadius/2 + 2) camera.position.z = -mapRadius/2 + 2;
-
-                // Enemy Target Navigation Logic
-                enemies.forEach(function(bot) {
-                    bot.userData.direction += (Math.random() - 0.5) * 0.15;
-                    bot.position.x += Math.cos(bot.userData.direction) * bot.userData.speed * timeDelta;
-                    bot.position.z += Math.sin(bot.userData.direction) * bot.userData.speed * timeDelta;
-
-                    if (Math.abs(bot.position.x) > mapRadius/2 - 3) bot.userData.direction = Math.PI - bot.userData.direction;
-                    if (Math.abs(bot.position.z) > mapRadius/2 - 3) bot.userData.direction = -bot.userData.direction;
-                });
-
-                renderer.render(scene, camera);
-            }
-
-            window.addEventListener('resize', function() {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            });
-
-            runFrameEngine();
+            // Initialize the game systems
+            initGame();
         });
+
+        // Dynamic Window Sizing Setup
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', () => {
+            if (canvas.style.display === 'block') resizeCanvas();
+        });
+
+        // Bind Input Event Listeners
+        function initGame() {
+            // Keyboard Keypress tracking
+            window.addEventListener('keydown', (e) => {
+                const key = e.key.toLowerCase();
+                if (key === 'w') keys.w = true;
+                if (key === 'a') keys.a = true;
+                if (key === 's') keys.s = true;
+                if (key === 'd') keys.d = true;
+                if (e.code === 'Space') keys.space = true;
+            });
+
+            window.addEventListener('keyup', (e) => {
+                const key = e.key.toLowerCase();
+                if (key === 'w') keys.w = false;
+                if (key === 'a') keys.a = false;
+                if (key === 's') keys.s = false;
+                if (key === 'd') keys.d = false;
+                if (e.code === 'Space') keys.space = false;
+            });
+
+            // Crosshair / Pointer tracking
+            window.addEventListener('mousemove', (e) => {
+                mouse.x = e.clientX;
+                mouse.y = e.clientY;
+            });
+
+            // Mouse Click Shooting system triggered
+            window.addEventListener('mousedown', () => {
+                shootProjectile();
+            });
+
+            // Put player center stage upon spawn initialization
+            player.x = canvas.width / 2;
+            player.y = canvas.height / 2;
+
+            // Start loop execution
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Projectile System array container
+        const projectiles = [];
+
+        function shootProjectile() {
+            // Figure out physics angles targeting mouse destination coordinates
+            const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+            projectiles.push({
+                x: player.x,
+                y: player.y,
+                vx: Math.cos(angle) * 8, // Speed scale factor
+                vy: Math.sin(angle) * 8
+            });
+        }
+
+        // Logic processing step updates
+        function update() {
+            // WASD directional layout system rules
+            if (keys.w) player.y -= player.speed;
+            if (keys.s) player.y += player.speed;
+            if (keys.a) player.x -= player.speed;
+            if (keys.d) player.x += player.speed;
+
+            // Simple active simulation boundary clamps
+            if (player.x < player.radius) player.x = player.radius;
+            if (player.x > canvas.width - player.radius) player.x = canvas.width - player.radius;
+            if (player.y < player.radius) player.y = player.radius;
+            if (player.y > canvas.height - player.radius) player.y = canvas.height - player.radius;
+
+            // Advance projectles vector mechanics
+            projectiles.forEach((proj, idx) => {
+                proj.x += proj.vx;
+                proj.y += proj.vy;
+
+                // Trash projectiles if they exit edge boundaries
+                if (proj.x < 0 || proj.x > canvas.width || proj.y < 0 || proj.y > canvas.height) {
+                    projectiles.splice(idx, 1);
+                }
+            });
+        }
+
+        // Canvas Rendering execution step
+        function draw() {
+            // Clear frame buffer trace
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Aim line targeting active pointer position
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(player.x, player.y);
+            ctx.lineTo(mouse.x, mouse.y);
+            ctx.stroke();
+
+            // Draw player character graphic representation
+            ctx.fillStyle = player.color;
+            ctx.shadowBlur = keys.space ? 25 : 10; // Jump Visual glow feedback indicator 
+            ctx.shadowColor = '#00ffcc';
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0; // Turn off global glowing configurations
+
+            // Render live standard projectiles
+            ctx.fillStyle = '#ffffff';
+            projectiles.forEach(proj => {
+                ctx.beginPath();
+                ctx.arc(proj.x, proj.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        // Standard Frame-rate rendering wrapper loop
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
     </script>
 </body>
 </html>
