@@ -3,229 +3,303 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Build & Shoot - Keyboard Only</title>
+    <title>3D Battle Engine</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: sans-serif; background: #000; }
-        #canvas-container { width: 100vw; height: 100vh; }
-        #ui { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 10px; color: white; pointer-events: none; }
-        .slot { border: 2px solid #555; padding: 10px; border-radius: 5px; text-align: center; width: 110px; }
+        body, html { margin: 0; padding: 0; overflow: hidden; font-family: sans-serif; background: #111; width: 100%; height: 100%; }
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        #hud { position: absolute; top: 20px; left: 20px; color: white; background: rgba(0,0,0,0.85); padding: 15px; border-radius: 5px; line-height: 1.4; z-index: 10; font-size: 14px; pointer-events: none; }
+        #inventory { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; background: rgba(0,0,0,0.85); padding: 15px; border-radius: 10px; color: white; z-index: 10; pointer-events: none; }
+        .slot { border: 2px solid #555; padding: 10px; border-radius: 5px; text-align: center; min-width: 110px; font-weight: bold; }
         .active { border-color: #00ffcc; background: rgba(0,255,204,0.2); }
-        #instructions { position: absolute; top: 20px; left: 20px; color: white; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 5px; pointer-events: none; line-height: 1.4; }
+        .subtext { font-size: 10px; color: #aaa; display: block; margin-top: 4px; }
     </style>
-    <!-- Include Three.js for 3D graphics -->
-    <script src="https://cloudflare.com"></script>
+    <script src="https://unpkg.com"></script>
 </head>
 <body>
 
-    <div id="instructions">
-        <h3>⌨️ Keyboard Controls:</h3>
-        <strong>W, A, S, D</strong> - Move Player<br>
-        <strong>← / → Arrow Keys</strong> - Look Left / Right<br>
-        <strong>↑ / ↓ Arrow Keys</strong> - Look Up / Down<br>
-        <strong>SPACEBAR</strong> - Shoot Weapon / Place Ramp<br>
-        <strong>Key 1</strong> - Equip Rivals Blaster<br>
-        <strong>Key 2</strong> - Equip Fortnite Ramp<br>
-        <strong>Key J</strong> - Jump
+    <div id="hud">
+        <h3>⌨️ Controls:</h3>
+        <strong>W, A, S, D</strong> - Move | <strong>Arrows</strong> - Look Around | <strong>J</strong> - Jump<br>
+        <strong>Keys 1 to 5</strong> - Choose Slot Category<br>
+        <strong>Key F</strong> - Swap weapon/item inside active slot<br>
+        <strong>SPACEBAR</strong> - Attack / Build / Use Item<br>
+        <strong>Key E</strong> - Special Scythe Dash (Slot 3 Scythe)<br>
+        <hr style="border-color:#444;">
+        <div id="ammo-display" style="color:#00ffcc; font-size:16px;">Ammo: Infinite</div>
     </div>
 
-    <div id="ui">
-        <div id="slot-1" class="slot active">1: Blaster</div>
-        <div id="slot-2" class="slot">2: Ramp Build</div>
+    <div id="inventory">
+        <div id="slot-1" class="slot active">Slot 1<span class="subtext" id="txt-1">Sniper</span></div>
+        <div id="slot-2" class="slot">Slot 2<span class="subtext" id="txt-2">Uzi</span></div>
+        <div id="slot-3" class="slot">Slot 3<span class="subtext" id="txt-3">Knife</span></div>
+        <div id="slot-4" class="slot">Slot 4<span class="subtext" id="txt-4">Medkit</span></div>
+        <div id="slot-5" class="slot">Slot 5<span class="subtext" id="txt-5">Fortnite Ramp</span></div>
     </div>
 
     <div id="canvas-container"></div>
 
     <script>
-        // --- 1. SETUP GAME WORLD ---
+        // --- 1. SETUP GRAPHICS ---
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x1a1a2e);
-        scene.fog = new THREE.FogExp2(0x1a1a2e, 0.015);
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
         container.appendChild(renderer.domElement);
 
-        // Lights
-        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(20, 40, 20);
-        scene.add(dirLight);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        const dLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dLight.position.set(10, 20, 10);
+        scene.add(dLight);
 
-        // Grid Floor
-        const floorGeo = new THREE.PlaneGeometry(200, 200);
-        const floorMat = new THREE.MeshStandardMaterial({ color: 0x111116, roughness: 0.8 });
-        const floor = new THREE.Mesh(floorGeo, floorMat);
-        floor.rotation.x = -Math.PI / 2;
-        scene.add(floor);
-
-        const grid = new THREE.GridHelper(200, 50, 0x4e54c8, 0x222233);
-        grid.position.y = 0.01;
+        const grid = new THREE.GridHelper(300, 60, 0x4e54c8, 0x252850);
         scene.add(grid);
 
-        // --- 2. PLAYER & MOVEMENT VARIABLES ---
-        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, canJump = true;
-        let lookLeft = false, lookRight = false, lookUp = false, lookDown = false;
+        // --- 2. INVENTORY DATA ---
+        const weaponData = {
+            1: ["Sniper", "Assault Rifle", "Shotgun", "Burst Rifle", "Bow"],
+            2: ["Uzi", "Revolver", "Shorty", "Energy Pistol"],
+            3: ["Knife", "Scythe"],
+            4: ["Medkit", "Grenade", "Jumpad"],
+            5: ["Fortnite Ramp"]
+        };
         
-        let velocity = new THREE.Vector3();
-        let direction = new THREE.Vector3();
-        let currentMode = 1; 
-        const builds = [];
-        const projectiles = [];
+        let activeSlot = 1;
+        let slotIndices = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
         
-        // Custom camera pitch/yaw system to avoid mouse lock math issues
-        let cameraYaw = 0;
-        let cameraPitch = 0;
+        // --- 3. MOVEMENT & STATE SYSTEM ---
+        let keys = { w:0, a:0, s:0, d:0, up:0, down:0, left:0, right:0 };
+        let velocity = new THREE.Vector3(), direction = new THREE.Vector3();
+        let cameraYaw = 0, cameraPitch = 0, canJump = true, health = 100;
+        const projectiles = [], builds = [], jumpads = [];
 
         camera.position.set(0, 2, 5);
 
-        // Keyboard Event Listeners
-        document.addEventListener('keydown', (e) => {
-            if (e.code === 'KeyW') moveForward = true;
-            if (e.code === 'KeyS') moveBackward = true;
-            if (e.code === 'KeyA') moveLeft = true;
-            if (e.code === 'KeyD') moveRight = true;
-            
-            if (e.code === 'ArrowLeft') lookLeft = true;
-            if (e.code === 'ArrowRight') lookRight = true;
-            if (e.code === 'ArrowUp') lookUp = true;
-            if (e.code === 'ArrowDown') lookDown = true;
-
-            if (e.code === 'KeyJ' && canJump) { velocity.y += 12; canJump = false; }
-            if (e.code === 'Digit1') switchMode(1);
-            if (e.code === 'Digit2') switchMode(2);
-            
-            if (e.code === 'Space') useActiveItem();
-        });
-
-        document.addEventListener('keyup', (e) => {
-            if (e.code === 'KeyW') moveForward = false;
-            if (e.code === 'KeyS') moveBackward = false;
-            if (e.code === 'KeyA') moveLeft = false;
-            if (e.code === 'KeyD') moveRight = false;
-            
-            if (e.code === 'ArrowLeft') lookLeft = false;
-            if (e.code === 'ArrowRight') lookRight = false;
-            if (e.code === 'ArrowUp') lookUp = false;
-            if (e.code === 'ArrowDown') lookDown = false;
-        });
-
-        function switchMode(mode) {
-            currentMode = mode;
-            document.getElementById('slot-1').className = mode === 1 ? 'slot active' : 'slot';
-            document.getElementById('slot-2').className = mode === 2 ? 'slot active' : 'slot';
-            weaponMesh.visible = (mode === 1);
-            previewRamp.visible = (mode === 2);
-        }
-
-        // --- 3. CREATING GUN & RAMP MODELS ---
-        const gunGeo = new THREE.BoxGeometry(0.2, 0.2, 0.8);
-        const gunMat = new THREE.MeshStandardMaterial({ color: 0xff0055 }); 
-        const weaponMesh = new THREE.Mesh(gunGeo, gunMat);
-        weaponMesh.position.set(0.3, -0.3, -0.6);
-        camera.add(weaponMesh);
+        // --- 4. ITEM VISUAL BUILDERS ---
+        const itemHolder = new THREE.Group();
+        itemHolder.position.set(0.4, -0.3, -0.8);
+        camera.add(itemHolder);
         scene.add(camera);
 
-        const rampGeo = new THREE.BoxGeometry(4, 0.2, 5.6);
-        rampGeo.rotateX(Math.PI / 6); 
-        const previewMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc, wireframe: true, transparent: true, opacity: 0.5 });
-        const previewRamp = new THREE.Mesh(rampGeo, previewMat);
+        let currentMesh = null;
+        function updateWeaponMesh() {
+            if(currentMesh) itemHolder.remove(currentMesh);
+            const name = weaponData[activeSlot][slotIndices[activeSlot]];
+            let geo, mat;
+
+            if (activeSlot === 5) {
+                previewRamp.visible = true;
+                return;
+            } else {
+                previewRamp.visible = false;
+            }
+
+            if(["Sniper","Assault Rifle","Burst Rifle","Bow"].includes(name)) {
+                geo = new THREE.BoxGeometry(0.15, 0.15, 1.2);
+                mat = new THREE.MeshStandardMaterial({ color: 0x556b2f });
+            } else if(["Shotgun","Shorty","Uzi"].includes(name)) {
+                geo = new THREE.BoxGeometry(0.2, 0.2, 0.8);
+                mat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+            } else if(["Revolver","Energy Pistol"].includes(name)) {
+                geo = new THREE.BoxGeometry(0.15, 0.2, 0.4);
+                mat = new THREE.MeshStandardMaterial({ color: name === "Energy Pistol" ? 0x00ffff : 0xaa8800 });
+            } else if(name === "Knife") {
+                geo = new THREE.BoxGeometry(0.05, 0.1, 0.5);
+                mat = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+            } else if(name === "Scythe") {
+                geo = new THREE.BoxGeometry(0.05, 1.2, 0.4);
+                mat = new THREE.MeshStandardMaterial({ color: 0x8800aa });
+            } else if(name === "Medkit") {
+                geo = new THREE.BoxGeometry(0.4, 0.3, 0.2);
+                mat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+            } else if(name === "Grenade" || name === "Jumpad") {
+                geo = name === "Grenade" ? new THREE.SphereGeometry(0.15, 8, 8) : new THREE.CylinderGeometry(0.4, 0.4, 0.1, 8);
+                mat = new THREE.MeshStandardMaterial({ color: name === "Grenade" ? 0x00ff00 : 0xffaa00 });
+            }
+            
+            currentMesh = new THREE.Mesh(geo, mat);
+            itemHolder.add(currentMesh);
+            document.getElementById("ammo-display").innerText = "Item: " + name;
+        }
+
+        // Fortnite Ghost Preview Setup
+        const rampGeo = new THREE.BoxGeometry(5, 0.1, 6);
+        rampGeo.rotateX(Math.PI / 6);
+        const previewRamp = new THREE.Mesh(rampGeo, new THREE.MeshBasicMaterial({ color: 0x00ffcc, wireframe: true }));
         previewRamp.visible = false;
         scene.add(previewRamp);
 
-        // --- 4. ACTION FUNCTION (SPACEBAR CLICK) ---
-        function useActiveItem() {
-            if (currentMode === 1) {
-                // Shoot weapon
-                const laserGeo = new THREE.SphereGeometry(0.15, 8, 8);
-                const laserMat = new THREE.MeshBasicMaterial({ color: 0xff0055 });
-                const laser = new THREE.Mesh(laserGeo, laserMat);
+        // --- 5. KEYBOARD LOGIC ---
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'KeyW') keys.w = 1; if (e.code === 'KeyS') keys.s = 1;
+            if (e.code === 'KeyA') keys.a = 1; if (e.code === 'KeyD') keys.d = 1;
+            if (e.code === 'ArrowLeft') keys.left = 1; if (e.code === 'ArrowRight') keys.right = 1;
+            if (e.code === 'ArrowUp') keys.up = 1; if (e.code === 'ArrowDown') keys.down = 1;
+
+            if (e.code === 'KeyJ' && canJump) { velocity.y += 12; canJump = false; }
+            
+            if (['Digit1','Digit2','Digit3','Digit4','Digit5'].includes(e.code)) {
+                activeSlot = parseInt(e.code.replace('Digit',''));
+                for(let i=1; i<=5; i++) document.getElementById('slot-'+i).className = i === activeSlot ? 'slot active' : 'slot';
+                updateWeaponMesh();
+            }
+
+            if (e.code === 'KeyF') {
+                slotIndices[activeSlot] = (slotIndices[activeSlot] + 1) % weaponData[activeSlot].length;
+                document.getElementById('txt-'+activeSlot).innerText = weaponData[activeSlot][slotIndices[activeSlot]];
+                updateWeaponMesh();
+            }
+
+            if (e.code === 'Space') triggerActiveItem();
+            if (e.code === 'KeyE') triggerScytheDash();
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'KeyW') keys.w = 0; if (e.code === 'KeyS') keys.s = 0;
+            if (e.code === 'KeyA') keys.a = 0; if (e.code === 'KeyD') keys.d = 0;
+            if (e.code === 'ArrowLeft') keys.left = 0; if (e.code === 'ArrowRight') keys.right = 0;
+            if (e.code === 'ArrowUp') keys.up = 0; if (e.code === 'ArrowDown') keys.down = 0;
+        });
+
+        // --- 6. WEAPONS AND BUILD EMITTERS ---
+        function triggerActiveItem() {
+            const name = weaponData[activeSlot][slotIndices[activeSlot]];
+            const dir = new THREE.Vector3();
+            camera.getWorldDirection(dir);
+
+            // Category 1 & 2: Projectile Shooting
+            if(activeSlot === 1 || activeSlot === 2) {
+                let color = activeSlot === 2 && name === "Energy Pistol" ? 0x00ffff : 0xffcc00;
+                let size = name === "Sniper" ? 0.3 : 0.15;
+                let speed = name === "Sniper" ? 2.5 : 1.3;
                 
-                const pLocal = new THREE.Vector3(0.3, -0.3, -1);
-                pLocal.applyMatrix4(camera.matrixWorld);
-                laser.position.copy(pLocal);
+                const projGeo = new THREE.SphereGeometry(size, 8, 8);
+                const projMat = new THREE.MeshBasicMaterial({ color: color });
+                const ball = new THREE.Mesh(projGeo, projMat);
                 
-                const dir = new THREE.Vector3();
-                camera.getWorldDirection(dir);
-                laser.userData = { dir: dir, speed: 1.5, life: 60 };
-                
-                scene.add(laser);
-                projectiles.push(laser);
-            } 
-            else if (currentMode === 2) {
-                // Place Ramp Build
-                const solidMat = new THREE.MeshStandardMaterial({ color: 0x00a8ff, roughness: 0.4, transparent: true, opacity: 0.8 });
-                const builtRamp = new THREE.Mesh(rampGeo.clone(), solidMat);
-                builtRamp.position.copy(previewRamp.position);
-                builtRamp.rotation.copy(previewRamp.rotation);
-                scene.add(builtRamp);
-                builds.push(builtRamp);
+                let spawnPos = new THREE.Vector3(0.4, -0.3, -1).applyMatrix4(camera.matrixWorld);
+                ball.position.copy(spawnPos);
+                ball.userData = { dir: dir, speed: speed, life: 50, type: "bullet" };
+                scene.add(ball);
+                projectiles.push(ball);
+            }
+            // Category 3: Melee Swings
+            else if(activeSlot === 3) {
+                currentMesh.position.z -= 0.4;
+                setTimeout(() => currentMesh.position.set(0,0,0), 80);
+            }
+            // Category 4: Items & Consumables
+            else if(activeSlot === 4) {
+                if(name === "Medkit") {
+                    console.log("Healed Up!");
+                } else if(name === "Grenade") {
+                    const nade = new THREE.Mesh(new THREE.SphereGeometry(0.2,8,8), new THREE.MeshStandardMaterial({color:0x00ff00}));
+                    nade.position.copy(camera.position);
+                    dir.y += 0.3; // arc throw
+                    nade.userData = { dir: dir.normalize(), speed: 0.8, life: 60, type: "grenade" };
+                    scene.add(nade);
+                    projectiles.push(nade);
+                } else if(name === "Jumpad") {
+                    const pad = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.1, 12), new THREE.MeshStandardMaterial({color:0xff9900}));
+                    pad.position.copy(camera.position).addScaledVector(new THREE.Vector3(dir.x, 0, dir.z).normalize(), 3);
+                    pad.position.y = 0.05;
+                    scene.add(pad);
+                    jumpads.push(pad);
+                }
+            }
+            // Category 5: Build Tool
+            else if(activeSlot === 5) {
+                const bRamp = new THREE.Mesh(rampGeo.clone(), new THREE.MeshStandardMaterial({ color: 0x00a8ff, roughness: 0.4 }));
+                bRamp.position.copy(previewRamp.position);
+                bRamp.rotation.copy(previewRamp.rotation);
+                scene.add(bRamp);
+                builds.push(bRamp);
             }
         }
 
-        // --- 5. GAME ENGINE LOOP ---
+        // Special Dash Ability for Scythe
+        function triggerScytheDash() {
+            if(activeSlot === 3 && weaponData[3][slotIndices[3]] === "Scythe") {
+                const dashDir = new THREE.Vector3();
+                camera.getWorldDirection(dashDir);
+                dashDir.y = 0; dashDir.normalize();
+                velocity.x += dashDir.x * 45;
+                velocity.z -= dashDir.z * 45;
+            }
+        }
+
+        // --- 7. RUNTIME GAME LOOP ---
         const clock = new THREE.Clock();
 
         function animate() {
             requestAnimationFrame(animate);
-            const delta = clock.getDelta();
+            const delta = Math.min(clock.getDelta(), 0.1);
 
-            // Handle Camera Rotation via Arrow Keys
-            const rotationSpeed = 2.0 * delta;
-            if (lookLeft) cameraYaw += rotationSpeed;
-            if (lookRight) cameraYaw -= rotationSpeed;
-            if (lookUp) cameraPitch = Math.min(Math.PI / 2.5, cameraPitch + rotationSpeed);
-            if (lookDown) cameraPitch = Math.max(-Math.PI / 2.5, cameraPitch - rotationSpeed);
+            // Camera Turning Look Engine
+            const rotSpeed = 2.5 * delta;
+            if (keys.left) cameraYaw += rotSpeed;
+            if (keys.right) cameraYaw -= rotSpeed;
+            if (keys.up) cameraPitch = Math.min(Math.PI/3, cameraPitch + rotSpeed);
+            if (keys.down) cameraPitch = Math.max(-Math.PI/3, cameraPitch - rotSpeed);
 
-            // Apply rotation order to stop visual glitching
             camera.rotation.y = cameraYaw;
             camera.rotation.x = cameraPitch;
             camera.rotation.order = "YXZ";
 
-            // Player Physics & Movement 
+            // Physics Calculations
             velocity.x -= velocity.x * 10.0 * delta;
             velocity.z -= velocity.z * 10.0 * delta;
-            velocity.y -= 9.8 * 3.0 * delta; 
+            velocity.y -= 9.8 * 3.0 * delta;
 
-            direction.z = Number(moveForward) - Number(moveBackward);
-            direction.x = Number(moveRight) - Number(moveLeft);
+            direction.z = Number(keys.w) - Number(keys.s);
+            direction.x = Number(keys.d) - Number(keys.a);
             direction.normalize();
 
-            if (moveForward || moveBackward) velocity.z -= direction.z * 150.0 * delta;
-            if (moveLeft || moveRight) velocity.x -= direction.x * 150.0 * delta;
+            if (keys.w || keys.s) velocity.z -= direction.z * 120.0 * delta;
+            if (keys.a || keys.d) velocity.x -= direction.x * 120.0 * delta;
 
             camera.translateX(-velocity.x * delta);
             camera.translateZ(velocity.z * delta);
             camera.position.y += velocity.y * delta;
 
-            // Stop player from falling through the floor
+            // Environment Collision Boundaries
             if (camera.position.y < 2) {
-                velocity.y = 0;
-                camera.position.y = 2;
-                canJump = true;
+                velocity.y = 0; camera.position.y = 2; canJump = true;
             }
 
-            // Keep track of build item preview positioning
-            if (currentMode === 2) {
-                const forwardDir = new THREE.Vector3();
-                camera.getWorldDirection(forwardDir);
-                forwardDir.y = 0; 
-                forwardDir.normalize();
-                
-                previewRamp.position.copy(camera.position).addScaledVector(forwardDir, 6);
-                previewRamp.position.y = Math.floor(previewRamp.position.y / 2) * 2 + 1.2; 
+            // Jumpad Mechanic Collision Check
+            for(let pad of jumpads) {
+                let dist = camera.position.distanceTo(new THREE.Vector3(pad.position.x, camera.position.y, pad.position.z));
+                if(dist < 1.5 && camera.position.y <= 2.5) {
+                    velocity.y = 22; // Boost player up high
+                }
+            }
+
+            // Ghost Ramp Vector Placement Tracking
+            if (activeSlot === 5) {
+                const fDir = new THREE.Vector3();
+                camera.getWorldDirection(fDir);
+                fDir.y = 0; fDir.normalize();
+                previewRamp.position.copy(camera.position).addScaledVector(fDir, 5.5);
+                previewRamp.position.y = 1;
                 previewRamp.rotation.y = cameraYaw;
             }
 
-            // Flying laser mechanics
+            // Projectile Tracking Logic Loop
             for (let i = projectiles.length - 1; i >= 0; i--) {
-                const proj = projectiles[i];
-                proj.position.addScaledVector(proj.userData.dir, proj.userData.speed);
-                proj.userData.life--;
-                if (proj.userData.life <= 0) {
-                    scene.remove(proj);
+                const p = projectiles[i];
+                if(p.userData.type === "grenade") {
+                    p.position.addScaledVector(p.userData.dir, p.userData.speed);
+                    p.userData.dir.y -= 1.5 * delta; // apply gravity drop
+                    if(p.position.y < 0.2) p.position.y = 0.2;
+                } else {
+                    p.position.addScaledVector(p.userData.dir, p.userData.speed);
+                }
+                p.userData.life--;
+                if (p.userData.life <= 0) {
+                    scene.remove(p);
                     projectiles.splice(i, 1);
                 }
             }
@@ -233,6 +307,8 @@
             renderer.render(scene, camera);
         }
 
+        // Initialize Engine
+        updateWeaponMesh();
         animate();
 
         window.addEventListener('resize', () => {
