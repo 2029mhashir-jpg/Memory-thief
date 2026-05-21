@@ -5,238 +5,150 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RIVALS Arena</title>
     <style>
+        /* Reset default styles */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        body {
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
             background-color: #0b0c16;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
         }
-        /* Menu View Layout */
-        #menu-container {
-            text-align: center;
+
+        /* Menu Screen Layout */
+        #menu-screen {
             display: flex;
             flex-direction: column;
+            justify-content: center;
             align-items: center;
-            gap: 20px;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, #101428 0%, #05060b 100%);
         }
-        h1 {
+
+        /* Neon Title Style */
+        .title {
+            font-size: 4rem;
+            font-weight: 900;
             color: #ffffff;
-            font-size: 3.5rem;
             text-transform: uppercase;
             letter-spacing: 2px;
-            text-shadow: 0 0 20px #00ffcc, 0 0 40px #00ffcc;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc, 0 0 40px #00ffcc;
         }
-        .controls-hint {
-            color: #6a6f8a;
+
+        /* Controls Instructions */
+        .controls {
             font-size: 0.9rem;
+            color: #64748b;
             text-transform: uppercase;
             letter-spacing: 1px;
+            margin-bottom: 40px;
         }
+
+        /* Deploy Match Neon Button */
         #deploy-btn {
             background-color: #00ffcc;
-            color: #0b0c16;
+            color: #05060b;
             border: none;
             padding: 15px 40px;
             font-size: 1.2rem;
-            font-weight: bold;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 2px;
             border-radius: 4px;
             cursor: pointer;
-            box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.6);
         }
+
         #deploy-btn:hover {
+            background-color: #ffffff;
+            box-shadow: 0 0 25px rgba(255, 255, 255, 0.9);
             transform: scale(1.05);
-            box-shadow: 0 0 30px rgba(0, 255, 204, 0.8);
         }
-        /* Game Screen Canvas Layout */
-        canvas {
-            display: none; /* Hidden until deploy match is clicked */
-            background: #05060a;
-            width: 100vw;
-            height: 100vh;
+
+        /* Hidden Game Screen Area */
+        #game-screen {
+            display: none;
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+            background-color: #111;
+            display: block;
+        }
+
+        /* Simple HUD inside the match */
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #00ffcc;
+            font-size: 1.5rem;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
 
-    <!-- 1. Menu Screen -->
-    <div id="menu-container">
-        <h1>RIVALS Arena</h1>
-        <p class="controls-hint">MOUSE = Aim & Shoot | WASD = Move | SPACE = Jump</p>
+    <!-- MAIN MENU SCREEN -->
+    <div id="menu-screen">
+        <h1 class="title">RIVALS Arena</h1>
+        <p class="controls">MOUSE = Aim & Shoot | WASD = Move | SPACE = Jump</p>
         <button id="deploy-btn">DEPLOY MATCH</button>
     </div>
 
-    <!-- 2. Game View Screen -->
-    <canvas id="gameCanvas"></canvas>
+    <!-- GAME ARENA SCREEN -->
+    <div id="game-screen">
+        <div id="hud">MATCH IN PROGRESS...</div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
 
     <script>
-        // DOM Elements
-        const menuContainer = document.getElementById('menu-container');
-        const deployBtn = document.getElementById('deploy-btn');
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+        document.addEventListener("DOMContentLoaded", () => {
+            const deployBtn = document.getElementById("deploy-btn");
+            const menuScreen = document.getElementById("menu-screen");
+            const gameScreen = document.getElementById("game-screen");
 
-        // State Tracking for Keyboard and Mouse Input
-        const keys = { w: false, a: false, s: false, d: false, space: false };
-        const mouse = { x: 0, y: 0 };
-
-        // Player Entity Structure
-        const player = {
-            x: 100,
-            y: 100,
-            radius: 20,
-            speed: 5,
-            color: '#00ffcc'
-        };
-
-        // Event: "Deploy Match" Clicked
-        deployBtn.addEventListener('click', () => {
-            // Hide the UI menu interface
-            menuContainer.style.display = 'none';
-            
-            // Activate and resize game canvas
-            canvas.style.display = 'block';
-            resizeCanvas();
-            
-            // Initialize the game systems
-            initGame();
+            // Event listener to trigger the transition
+            deployBtn.addEventListener("click", () => {
+                // 1. Hide the main menu
+                menuScreen.style.display = "none";
+                
+                // 2. Display the game arena screen
+                gameScreen.style.display = "block";
+                
+                // 3. Trigger the match setup functions
+                initGameArena();
+            });
         });
 
-        // Dynamic Window Sizing Setup
-        function resizeCanvas() {
+        // Simple placeholder game setup
+        function initGameArena() {
+            console.log("Match successfully deployed!");
+            
+            const canvas = document.getElementById("gameCanvas");
+            const ctx = canvas.getContext("2d");
+            
+            // Resize canvas to fill the window
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', () => {
-            if (canvas.style.display === 'block') resizeCanvas();
-        });
 
-        // Bind Input Event Listeners
-        function initGame() {
-            // Keyboard Keypress tracking
-            window.addEventListener('keydown', (e) => {
-                const key = e.key.toLowerCase();
-                if (key === 'w') keys.w = true;
-                if (key === 'a') keys.a = true;
-                if (key === 's') keys.s = true;
-                if (key === 'd') keys.d = true;
-                if (e.code === 'Space') keys.space = true;
-            });
-
-            window.addEventListener('keyup', (e) => {
-                const key = e.key.toLowerCase();
-                if (key === 'w') keys.w = false;
-                if (key === 'a') keys.a = false;
-                if (key === 's') keys.s = false;
-                if (key === 'd') keys.d = false;
-                if (e.code === 'Space') keys.space = false;
-            });
-
-            // Crosshair / Pointer tracking
-            window.addEventListener('mousemove', (e) => {
-                mouse.x = e.clientX;
-                mouse.y = e.clientY;
-            });
-
-            // Mouse Click Shooting system triggered
-            window.addEventListener('mousedown', () => {
-                shootProjectile();
-            });
-
-            // Put player center stage upon spawn initialization
-            player.x = canvas.width / 2;
-            player.y = canvas.height / 2;
-
-            // Start loop execution
-            requestAnimationFrame(gameLoop);
-        }
-
-        // Projectile System array container
-        const projectiles = [];
-
-        function shootProjectile() {
-            // Figure out physics angles targeting mouse destination coordinates
-            const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
-            projectiles.push({
-                x: player.x,
-                y: player.y,
-                vx: Math.cos(angle) * 8, // Speed scale factor
-                vy: Math.sin(angle) * 8
-            });
-        }
-
-        // Logic processing step updates
-        function update() {
-            // WASD directional layout system rules
-            if (keys.w) player.y -= player.speed;
-            if (keys.s) player.y += player.speed;
-            if (keys.a) player.x -= player.speed;
-            if (keys.d) player.x += player.speed;
-
-            // Simple active simulation boundary clamps
-            if (player.x < player.radius) player.x = player.radius;
-            if (player.x > canvas.width - player.radius) player.x = canvas.width - player.radius;
-            if (player.y < player.radius) player.y = player.radius;
-            if (player.y > canvas.height - player.radius) player.y = canvas.height - player.radius;
-
-            // Advance projectles vector mechanics
-            projectiles.forEach((proj, idx) => {
-                proj.x += proj.vx;
-                proj.y += proj.vy;
-
-                // Trash projectiles if they exit edge boundaries
-                if (proj.x < 0 || proj.x > canvas.width || proj.y < 0 || proj.y > canvas.height) {
-                    projectiles.splice(idx, 1);
-                }
-            });
-        }
-
-        // Canvas Rendering execution step
-        function draw() {
-            // Clear frame buffer trace
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Draw Aim line targeting active pointer position
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(player.x, player.y);
-            ctx.lineTo(mouse.x, mouse.y);
-            ctx.stroke();
-
-            // Draw player character graphic representation
-            ctx.fillStyle = player.color;
-            ctx.shadowBlur = keys.space ? 25 : 10; // Jump Visual glow feedback indicator 
-            ctx.shadowColor = '#00ffcc';
-            ctx.beginPath();
-            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.shadowBlur = 0; // Turn off global glowing configurations
-
-            // Render live standard projectiles
-            ctx.fillStyle = '#ffffff';
-            projectiles.forEach(proj => {
-                ctx.beginPath();
-                ctx.arc(proj.x, proj.y, 4, 0, Math.PI * 2);
-                ctx.fill();
-            });
-        }
-
-        // Standard Frame-rate rendering wrapper loop
-        function gameLoop() {
-            update();
-            draw();
-            requestAnimationFrame(gameLoop);
+            // Draw a basic placeholder player square
+            ctx.fillStyle = "#00ffcc";
+            ctx.fillRect(canvas.width / 2 - 25, canvas.height / 2 - 25, 50, 50);
+            
+            // Your future player movement, logic loop, and map mechanics will go here.
         }
     </script>
 </body>
