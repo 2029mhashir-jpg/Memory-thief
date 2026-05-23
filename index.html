@@ -3,25 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Mini-Fortnite Prototype</title>
+    <title>School Laptop 3D Game</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
             font-family: Arial, sans-serif;
+            background-color: #1a1a1a;
             user-select: none;
-        }
-        #crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 10px;
-            height: 10px;
-            background-color: white;
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            z-index: 10;
         }
         #hud {
             position: absolute;
@@ -30,14 +19,14 @@
             transform: translateX(-50%);
             display: flex;
             gap: 10px;
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0.7);
             padding: 10px;
             border-radius: 10px;
             z-index: 10;
         }
         .slot {
-            width: 70px;
-            height: 70px;
+            width: 65px;
+            height: 65px;
             background: #333;
             border: 3px solid #666;
             border-radius: 5px;
@@ -46,229 +35,177 @@
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: bold;
         }
         .slot.active {
             border-color: #ffaa00;
             background: #555;
         }
-        .slot-num {
-            font-size: 10px;
-            color: #aaa;
-            margin-bottom: 4px;
-        }
         #instructions {
             position: absolute;
             top: 10px;
             left: 10px;
             color: white;
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.8);
             padding: 12px;
             border-radius: 5px;
-            font-size: 14px;
-            line-height: 1.5;
-            pointer-events: none;
+            font-size: 13px;
+            line-height: 1.4;
+            z-index: 10;
+        }
+        #action-btn {
+            position: absolute;
+            bottom: 110px;
+            right: 20px;
+            width: 90px;
+            height: 90px;
+            background: #ffaa00;
+            color: black;
+            border: none;
+            border-radius: 50%;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            z-index: 10;
         }
     </style>
-    <!-- Imports the Three.js 3D Engine -->
-    <script src="https://cloudflare.com"></script>
+    <!-- Unblocked alternative source for the 3D Engine -->
+    <script src="https://unpkg.com"></script>
 </head>
 <body>
 
-    <div id="crosshair"></div>
     <div id="instructions">
-        <strong>Controls:</strong><br>
-        • Click screen = Lock Mouse<br>
-        • WASD = Move Player<br>
-        • Keys 1, 2, 3, 4 = Select Weapons<br>
-        • Key 5 = Select Wood Building Tool<br>
-        • Left Click = Shoot Gun / Build Wall<br>
-        • Press Esc = Free your mouse pointer
+        <strong>Trackpad Controls:</strong><br>
+        • <strong>WASD</strong> = Move Player<br>
+        • <strong>Arrow Keys (Left/Right)</strong> = Turn Camera<br>
+        • <strong>Keys 1 to 5</strong> = Switch Weapon/Build<br>
+        • <strong>Click Orange Circle</strong> = Shoot / Build Wall
     </div>
 
+    <button id="action-btn">ACTION</button>
+
     <div id="hud">
-        <div class="slot active" id="slot1"><span class="slot-num">1</span><span>Scar</span></div>
-        <div class="slot" id="slot2"><span class="slot-num">2</span><span>Shotgun</span></div>
-        <div class="slot" id="slot3"><span class="slot-num">3</span><span>Sniper</span></div>
-        <div class="slot" id="slot4"><span class="slot-num">4</span><span>Pistol</span></div>
-        <div class="slot" id="slot5"><span class="slot-num">5</span><span>Build</span></div>
+        <div class="slot active" id="slot1"><span>[1] Scar</span></div>
+        <div class="slot" id="slot2"><span>[2] Shotty</span></div>
+        <div class="slot" id="slot3"><span>[3] Sniper</span></div>
+        <div class="slot" id="slot4"><span>[4] Pistol</span></div>
+        <div class="slot" id="slot5"><span>[5] Build</span></div>
     </div>
 
     <script>
-        // --- 1. GAME WORLD SETUP ---
+        // --- 1. SETUP ENGINE ---
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87ceeb); // Fortnite sky blue
-        scene.fog = new THREE.FogExp2(0x87ceeb, 0.015);
+        scene.background = new THREE.Color(0x87ceeb);
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
         document.body.appendChild(renderer.domElement);
 
-        // --- 2. WORLD LIGHTS ---
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-        scene.add(ambientLight);
-
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(20, 40, 20);
-        dirLight.castShadow = true;
+        // --- 2. LIGHTS & GROUND ---
+        const light = new THREE.AmbientLight(0xffffff, 0.7);
+        scene.add(light);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        dirLight.position.set(10, 20, 10);
         scene.add(dirLight);
 
-        // --- 3. GROUND MAP ---
-        const groundGeo = new THREE.PlaneGeometry(300, 300);
-        const groundMat = new THREE.MeshStandardMaterial({ color: 0x2e8b57 }); // Green grass
-        const ground = new THREE.Mesh(groundGeo, groundMat);
+        const ground = new THREE.Mesh(
+            new THREE.PlaneGeometry(200, 200),
+            new THREE.MeshStandardMaterial({ color: 0x2e8b57 })
+        );
         ground.rotation.x = -Math.PI / 2;
-        ground.receiveShadow = true;
         scene.add(ground);
 
-        // --- 4. FIRST PERSON PLAYER MOUSE CONTROLS ---
-        camera.position.set(0, 2, 0); 
-
-        let moveForward = false;
-        let moveBackward = false;
-        let moveLeft = false;
-        let moveRight = false;
-        let isLocked = false;
-
-        const euler = new THREE.Euler(0, 0, 0, 'YXZ');
-        
-        document.body.addEventListener('click', () => {
-            document.body.requestPointerLock();
-        });
-
-        document.addEventListener('pointerlockchange', () => {
-            isLocked = document.pointerLockElement === document.body;
-        });
-
-        document.addEventListener('mousemove', (event) => {
-            if (!isLocked) return;
-
-            const movementX = event.movementX || 0;
-            const movementY = event.movementY || 0;
-
-            euler.setFromQuaternion(camera.quaternion);
-            euler.y -= movementX * 0.0025; // Look Left/Right
-            euler.x -= movementY * 0.0025; // Look Up/Down
-            euler.x = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, euler.x)); 
-
-            camera.quaternion.setFromEuler(euler);
-        });
-
-        // --- 5. WEAPONS AND INVENTORY CONFIG ---
+        // --- 3. MOVEMENT VARIABLES ---
+        camera.position.set(0, 2, 5);
+        let moveFwd = false, moveBwd = false, turnLeft = false, turnRight = false;
         let activeSlot = 1;
-        const slots = {
-            1: { name: "Scar", type: "weapon" },
-            2: { name: "Shotgun", type: "weapon" },
-            3: { name: "Sniper", type: "weapon" },
-            4: { name: "Pistol", type: "weapon" },
-            5: { name: "Build", type: "build" }
-        };
 
-        // Key presses
-        document.addEventListener('keydown', (event) => {
-            switch (event.code) {
-                case 'KeyW': moveForward = true; break;
-                case 'KeyS': moveBackward = true; break;
-                case 'KeyA': moveLeft = true; break;
-                case 'KeyD': moveRight = true; break;
-                case 'Digit1': switchSlot(1); break;
-                case 'Digit2': switchSlot(2); break;
-                case 'Digit3': switchSlot(3); break;
-                case 'Digit4': switchSlot(4); break;
-                case 'Digit5': switchSlot(5); break;
+        // --- 4. INPUT TRACKING ---
+        window.addEventListener('keydown', (e) => {
+            if(e.code === 'KeyW') moveFwd = true;
+            if(e.code === 'KeyS') moveBwd = true;
+            if(e.code === 'ArrowLeft') turnLeft = true;
+            if(e.code === 'ArrowRight') turnRight = true;
+            if(['Digit1','Digit2','Digit3','Digit4','Digit5'].includes(e.code)) {
+                document.getElementById(`slot${activeSlot}`).classList.remove('active');
+                activeSlot = parseInt(e.code.replace('Digit', ''));
+                document.getElementById(`slot${activeSlot}`).classList.add('active');
             }
         });
 
-        document.addEventListener('keyup', (event) => {
-            switch (event.code) {
-                case 'KeyW': moveForward = false; break;
-                case 'KeyS': moveBackward = false; break;
-                case 'KeyA': moveLeft = false; break;
-                case 'KeyD': moveRight = false; break;
+        window.addEventListener('keyup', (e) => {
+            if(e.code === 'KeyW') moveFwd = false;
+            if(e.code === 'KeyS') moveBwd = false;
+            if(e.code === 'ArrowLeft') turnLeft = false;
+            if(e.code === 'ArrowRight') turnRight = false;
+        });
+
+        // --- 5. ACTION BUTTON (SHOOT/BUILD) ---
+        const actionBtn = document.getElementById('action-btn');
+        actionBtn.addEventListener('click', () => {
+            if (activeSlot === 5) {
+                // Build a Wall Panel
+                const wall = new THREE.Mesh(
+                    new THREE.BoxGeometry(3, 2, 0.2),
+                    new THREE.MeshStandardMaterial({ color: 0x8b5a2b })
+                );
+                const dir = new THREE.Vector3();
+                camera.getWorldDirection(dir);
+                
+                wall.position.set(
+                    Math.round(camera.position.x + dir.x * 4),
+                    1,
+                    Math.round(camera.position.z + dir.z * 4)
+                );
+                wall.rotation.y = camera.rotation.y;
+                scene.add(wall);
+            } else {
+                // Fire Tracer Bullet
+                const points = [
+                    new THREE.Vector3(camera.position.x, camera.position.y - 0.2, camera.position.z),
+                    new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z - 20)
+                ];
+                const laser = new THREE.Line(
+                    new THREE.BufferGeometry().setFromPoints(points),
+                    new THREE.LineBasicMaterial({ color: 0xff0000 })
+                );
+                scene.add(laser);
+                setTimeout(() => scene.remove(laser), 60);
             }
         });
 
-        function switchSlot(slotNum) {
-            document.getElementById(`slot${activeSlot}`).classList.remove('active');
-            activeSlot = slotNum;
-            document.getElementById(`slot${activeSlot}`).classList.add('active');
-        }
-
-        // --- 6. SHOOTING & BUILDING MECHANICS ---
-        document.addEventListener('mousedown', (event) => {
-            if (!isLocked || event.button !== 0) return; 
-
-            if (slots[activeSlot].type === "weapon") {
-                shootWeapon();
-            } else if (slots[activeSlot].type === "build") {
-                buildWall();
-            }
-        });
-
-        function shootWeapon() {
-            // Draw a temporary laser line representing a bullet path
-            const raycaster = new THREE.Raycaster();
-            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-            
-            const points = [];
-            points.push(new THREE.Vector3(camera.position.x, camera.position.y - 0.2, camera.position.z));
-            
-            const target = new THREE.Vector3();
-            raycaster.ray.at(30, target);
-            points.push(target);
-
-            const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
-            const lineMat = new THREE.LineBasicMaterial({ color: 0xffcc00 }); // Yellow tracer
-            const laser = new THREE.Line(lineGeo, lineMat);
-            scene.add(laser);
-
-            // Clear bullet tracer out of world quickly
-            setTimeout(() => scene.remove(laser), 40);
-        }
-
-        function buildWall() {
-            const direction = new THREE.Vector3();
-            camera.getWorldDirection(direction);
-            
-            // Build 5 units ahead of player, locked into a block grid layout
-            const buildDistance = 5; 
-            const gridX = Math.round((camera.position.x + direction.x * buildDistance) / 4) * 4;
-            const gridZ = Math.round((camera.position.z + direction.z * buildDistance) / 4) * 4;
-            
-            // Create a wooden looking wall panel
-            const wallGeo = new THREE.BoxGeometry(4, 3, 0.2);
-            const wallMat = new THREE.MeshStandardMaterial({ 
-                color: 0x8b5a2b, // Wood brown color
-                roughness: 0.9
-            });
-            const wall = new THREE.Mesh(wallGeo, wallMat);
-            
-            wall.position.set(gridX, 1.5, gridZ);
-            
-            // Snap rotation based on looking direction (North, South, East, West)
-            wall.rotation.y = Math.round(camera.rotation.y / (Math.PI / 2)) * (Math.PI / 2);
-            wall.castShadow = true;
-            wall.receiveShadow = true;
-
-            scene.add(wall);
-        }
-
-        // --- 7. FRAME UPDATE ENGINE LOOP ---
+        // --- 6. GAME LOOP ---
         const clock = new THREE.Clock();
-        const velocity = new THREE.Vector3();
-        const moveDirection = new THREE.Vector3();
-
         function animate() {
             requestAnimationFrame(animate);
+            const delta = clock.getDelta();
 
-            if (isLocked) {
-                const delta = clock.getDelta();
-                
-                // Physics drag deceleration
-                velocity.x -= velocity.x * 10.0 * delta;
-                velocity.z -= velocity.z * 10.0 * delta;
+            // Rotate Camera with Arrow Keys
+            if (turnLeft) camera.rotation.y += 2.0 * delta;
+            if (turnRight) camera.rotation.y -= 2.0 * delta;
 
-                moveDirection.z = Number(moveForward) - Number(moveBackward);
+            // Move Player Forward/Backward based on facing direction
+            const dir = new THREE.Vector3();
+            camera.getWorldDirection(dir);
+            dir.y = 0;
+            dir.normalize();
+
+            if (moveFwd) camera.position.addScaledVector(dir, 8 * delta);
+            if (moveBwd) camera.position.addScaledVector(dir, -8 * delta);
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
